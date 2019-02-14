@@ -10,19 +10,17 @@ import android.widget.TextView
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v1.util.MoneyUtil
+import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.wallet.v2.data.model.remote.response.Alias
-import com.wavesplatform.wallet.v2.ui.base.view.BaseBottomSheetDialogFragment
+import com.wavesplatform.sdk.model.response.Alias
 import com.wavesplatform.wallet.v2.ui.base.view.BaseSuperBottomSheetDialogFragment
 import com.wavesplatform.wallet.v2.ui.custom.ImageProgressBar
 import com.wavesplatform.wallet.v2.ui.home.profile.addresses.alias.create.CreateAliasActivity
 import com.wavesplatform.wallet.v2.util.launchActivity
-import com.wavesplatform.wallet.v2.util.notNull
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.v2.util.showError
 import kotlinx.android.synthetic.main.bottom_sheet_dialog_aliases_layout.view.*
 import pers.victor.ext.click
-import pers.victor.ext.dp2px
 import pers.victor.ext.gone
 import pers.victor.ext.visiable
 import javax.inject.Inject
@@ -116,7 +114,7 @@ class AliasBottomSheetFragment : BaseSuperBottomSheetDialogFragment(), AliasView
             }
 
             override fun showCommissionSuccess(unscaledAmount: Long) {
-                feeTransaction.text = MoneyUtil.getWavesStripZeros(unscaledAmount)
+                feeTransaction.text = MoneyUtil.getScaledText(unscaledAmount, 8)
                 progressBarFee.hide()
                 feeTransaction.visiable()
                 buttonCreateAlias.isEnabled = true

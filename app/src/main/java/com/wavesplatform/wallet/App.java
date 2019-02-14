@@ -14,16 +14,15 @@ import com.github.moduth.blockcanary.BlockCanary;
 import com.google.firebase.FirebaseApp;
 import com.novoda.simplechromecustomtabs.SimpleChromeCustomTabs;
 import com.squareup.leakcanary.LeakCanary;
-import com.wavesplatform.wallet.v1.data.connectivity.ConnectivityManager;
-import com.wavesplatform.wallet.v1.ui.auth.EnvironmentManager;
-import com.wavesplatform.wallet.v1.util.AppUtil;
-import com.wavesplatform.wallet.v1.util.ApplicationLifeCycle;
-import com.wavesplatform.wallet.v1.util.PrefsUtil;
+import com.wavesplatform.sdk.Wavesplatform;
 import com.wavesplatform.wallet.v2.data.helpers.AuthHelper;
 import com.wavesplatform.wallet.v2.data.manager.AccessManager;
 import com.wavesplatform.wallet.v2.data.receiver.ScreenReceiver;
 import com.wavesplatform.wallet.v2.injection.component.DaggerApplicationV2Component;
 import com.wavesplatform.wallet.v2.util.Analytics;
+import com.wavesplatform.wallet.v2.util.EnvironmentManager;
+import com.wavesplatform.wallet.v2.util.PrefsUtil;
+import com.wavesplatform.wallet.v2.util.connectivity.ConnectivityManager;
 
 import javax.inject.Inject;
 
@@ -56,9 +55,7 @@ public class App extends DaggerApplication {
 
         Analytics.appsFlyerInit(this);
         FirebaseApp.initializeApp(this);
-        if (!BuildConfig.DEBUG) {
-            Fabric.with(this, new Crashlytics());
-        }
+        Fabric.with(this, new Crashlytics());
         sContext = this;
         BlockCanary.install(this, new AppBlockCanaryContext()).start();
 
@@ -67,9 +64,10 @@ public class App extends DaggerApplication {
 
         RxJavaPlugins.setErrorHandler(Timber::e);
 
-        AppUtil appUtil = new AppUtil(this);
         EnvironmentManager.init(this);
-        accessManager = new AccessManager(mPrefsUtil, appUtil, authHelper);
+        accessManager = new AccessManager(mPrefsUtil, authHelper);
+
+        Wavesplatform.init(this, null);
 
         if (BuildConfig.DEBUG) {
             Timber.plant(new Timber.DebugTree());
@@ -82,28 +80,11 @@ public class App extends DaggerApplication {
         BroadcastReceiver mReceiver = new ScreenReceiver();
         registerReceiver(mReceiver, filter);
 
-        // Apply PRNG fixes on app start if needed
-        appUtil.applyPRNGFixes();
-
         ConnectivityManager.getInstance().registerNetworkListener(this);
 
 
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true);
         SimpleChromeCustomTabs.initialize(this);
-
-        // todo сомнительная штука
-        ApplicationLifeCycle.getInstance().addListener(new ApplicationLifeCycle.LifeCycleListener() {
-            @Override
-            public void onBecameForeground() {
-                // Ensure that PRNG fixes are always current for the session
-                appUtil.applyPRNGFixes();
-            }
-
-            @Override
-            public void onBecameBackground() {
-                // No-op
-            }
-        });
     }
 
     public static Context getAppContext() {

@@ -1,13 +1,13 @@
 package com.wavesplatform.wallet.v2.ui.home.wallet.assets.token_burn.confirmation
 
 import com.arellomobile.mvp.InjectViewState
+import com.wavesplatform.sdk.model.request.BurnRequest
 import com.wavesplatform.wallet.App
-import com.wavesplatform.wallet.v1.data.rxjava.RxUtil
-import com.wavesplatform.wallet.v2.data.model.remote.request.BurnRequest
-import com.wavesplatform.wallet.v2.data.model.remote.response.AssetBalance
+import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.utils.isSmartError
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.util.errorBody
-import com.wavesplatform.wallet.v2.util.isSmartError
 import javax.inject.Inject
 
 @InjectViewState
@@ -33,8 +33,9 @@ class TokenBurnConfirmationPresenter @Inject constructor() : BasePresenter<Token
         request.sign(App.getAccessManager().getWallet()!!.privateKey)
 
         addSubscription(nodeDataManager.burn(request)
-                .compose(RxUtil.applySchedulersToObservable()).subscribe({ it ->
-                    viewState.onShowBurnSuccess(it, quantity >= assetBalance?.balance ?: 0)
+                .compose(RxUtil.applySchedulersToObservable()).subscribe({
+                    viewState.onShowBurnSuccess(it,
+                            quantity >= assetBalance?.getAvailableBalance() ?: 0)
                 }, {
                     if (it.errorBody()?.isSmartError() == true) {
                         viewState.failedTokenBurnCauseSmart()
@@ -43,7 +44,6 @@ class TokenBurnConfirmationPresenter @Inject constructor() : BasePresenter<Token
                             viewState.onShowError(it.message)
                         }
                     }
-
                 }))
     }
 }

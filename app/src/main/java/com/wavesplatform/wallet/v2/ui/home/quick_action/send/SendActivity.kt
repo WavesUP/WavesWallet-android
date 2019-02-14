@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v4.view.ViewCompat
 import android.support.v7.widget.AppCompatTextView
-import android.text.TextUtils
 import android.view.View
 import android.widget.LinearLayout
 import com.arellomobile.mvp.presenter.InjectPresenter
@@ -16,19 +15,16 @@ import com.ethanhua.skeleton.SkeletonScreen
 import com.google.zxing.integration.android.IntentIntegrator
 import com.jakewharton.rxbinding2.widget.RxTextView
 import com.vicpin.krealmextensions.queryFirst
+import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.model.response.coinomat.XRate
+import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v1.ui.assets.PaymentConfirmationDetails
-import com.wavesplatform.wallet.v1.util.MoneyUtil
-import com.wavesplatform.wallet.v1.util.MoneyUtil.getWavesStripZeros
-import com.wavesplatform.wallet.v1.util.PrefsUtil
-import com.wavesplatform.wallet.v1.util.ViewUtils
 import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.wallet.v2.data.model.remote.response.AssetBalance
-import com.wavesplatform.wallet.v2.data.model.remote.response.coinomat.XRate
+import com.wavesplatform.wallet.v2.data.model.db.AddressBookUserDb
+import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.auth.qr_scanner.QrCodeScannerActivity
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookActivity
-import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookUser
 import com.wavesplatform.wallet.v2.ui.home.quick_action.send.confirmation.SendConfirmationActivity
 import com.wavesplatform.wallet.v2.ui.home.quick_action.send.confirmation.SendConfirmationActivity.Companion.KEY_INTENT_ATTACHMENT
 import com.wavesplatform.wallet.v2.ui.home.quick_action.send.confirmation.SendConfirmationActivity.Companion.KEY_INTENT_BLOCKCHAIN_COMMISSION
@@ -231,7 +227,7 @@ class SendActivity : BaseActivity(), SendView {
         for (address in addresses) {
             val lastRecipient = layoutInflater
                     .inflate(R.layout.view_text_tag, null) as AppCompatTextView
-            val addressBookUser = queryFirst<AddressBookUser> {
+            val addressBookUser = queryFirst<AddressBookUserDb> {
                 equalTo("address", address)
             }
             lastRecipient.text = addressBookUser?.name ?: address
@@ -445,7 +441,7 @@ class SendActivity : BaseActivity(), SendView {
 
     override fun showCommissionSuccess(unscaledAmount: Long) {
         commission_card.visiable()
-        text_fee_transaction.text = getWavesStripZeros(unscaledAmount)
+        text_fee_transaction.text = MoneyUtil.getScaledText(unscaledAmount, 8)
         progress_bar_fee_transaction.hide()
         text_fee_transaction.visiable()
     }
@@ -478,7 +474,7 @@ class SendActivity : BaseActivity(), SendView {
                 if (resultCode == Activity.RESULT_OK) {
                     val result = IntentIntegrator.parseActivityResult(resultCode, data)
                             .contents
-                            .replace(AddressUtil.WAVES_PREFIX, "")
+                            .replace(WAVES_PREFIX, "")
                     parseDataFromQr(result)
                 }
             }
@@ -487,14 +483,14 @@ class SendActivity : BaseActivity(), SendView {
                 if (resultCode == Activity.RESULT_OK) {
                     val result = IntentIntegrator.parseActivityResult(resultCode, data)
                             .contents
-                            .replace(AddressUtil.WAVES_PREFIX, "")
+                            .replace(WAVES_PREFIX, "")
                     edit_monero_payment_id.setText(result)
                 }
             }
 
             StartLeasingActivity.REQUEST_CHOOSE_ADDRESS -> {
                 if (resultCode == Activity.RESULT_OK) {
-                    val addressTestObject = data?.getParcelableExtra<AddressBookUser>(AddressBookActivity.BUNDLE_ADDRESS_ITEM)
+                    val addressTestObject = data?.getParcelableExtra<AddressBookUserDb>(AddressBookActivity.BUNDLE_ADDRESS_ITEM)
                     edit_address.setText(addressTestObject?.address)
                 }
             }
@@ -550,9 +546,9 @@ class SendActivity : BaseActivity(), SendView {
                 if ("waves".equalsIgnoreCase(assetId)) {
                     assetId = ""
                 }
-                val assetBalance = queryFirst<AssetBalance> {
+                val assetBalance = queryFirst<AssetBalanceDb> {
                     equalTo("assetId", assetId)
-                }
+                }?.convertFromDb()
 
                 if (assetBalance == null) {
                     loadAsset(assetId)

@@ -9,7 +9,7 @@ import com.vicpin.krealmextensions.queryFirst
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.manager.NodeDataManager
-import com.wavesplatform.wallet.v2.data.model.remote.response.Transaction
+import com.wavesplatform.wallet.v2.data.model.db.TransactionDb
 import com.wavesplatform.wallet.v2.data.database.TransactionSaver
 import com.wavesplatform.wallet.v2.util.RxEventBus
 import com.wavesplatform.wallet.v2.util.RxUtil
@@ -35,13 +35,13 @@ class UpdateApiDataService : Service() {
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if (App.getAccessManager().getWallet() == null
+        if (App.getAccessManager().isAuthenticated()
                 || ProcessLifecycleOwner.get().lifecycle.currentState != Lifecycle.State.RESUMED) {
             stopSelf()
             return Service.START_NOT_STICKY
         }
 
-        val transaction = queryFirst<Transaction>()
+        val transaction = queryFirst<TransactionDb>()
         if (transaction == null) {
             transactionLimit = TransactionSaver.MAX_LIMIT
         }

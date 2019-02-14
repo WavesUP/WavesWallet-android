@@ -9,13 +9,17 @@ import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.jakewharton.rxbinding2.widget.RxTextView
 import com.vicpin.krealmextensions.queryFirst
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v1.util.MoneyUtil
+import com.wavesplatform.sdk.utils.MoneyUtil
+import com.wavesplatform.sdk.utils.getTicker
 import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.wallet.v2.data.model.remote.request.TransactionsBroadcastRequest
+import com.wavesplatform.sdk.model.request.TransactionsBroadcastRequest
+import com.wavesplatform.sdk.utils.getScaledAmount
+import com.wavesplatform.sdk.utils.stripZeros
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.wallet.v2.ui.home.MainActivity
 import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookActivity
-import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookUser
+import com.wavesplatform.wallet.v2.data.model.db.AddressBookUserDb
+import com.wavesplatform.wallet.v2.data.model.db.AssetInfoDb
 import com.wavesplatform.wallet.v2.ui.home.profile.address_book.add.AddAddressActivity
 import com.wavesplatform.wallet.v2.ui.home.quick_action.send.SendPresenter
 import com.wavesplatform.wallet.v2.util.*
@@ -58,7 +62,9 @@ class SendConfirmationActivity : BaseActivity(), SendConfirmationView {
         presenter.recipient = intent!!.extras!!.getString(KEY_INTENT_SELECTED_RECIPIENT)
         presenter.amount = BigDecimal(intent!!.extras!!.getString(KEY_INTENT_SELECTED_AMOUNT))
         presenter.moneroPaymentId = intent!!.extras!!.getString(KEY_INTENT_MONERO_PAYMENT_ID)
-        presenter.assetInfo = queryFirst { equalTo("id", presenter.selectedAsset!!.assetId) }
+        presenter.assetInfo = queryFirst<AssetInfoDb> {
+            equalTo("id", presenter.selectedAsset!!.assetId)
+        }?.convertFromDb()
         presenter.type = intent!!.extras!!.getSerializable(KEY_INTENT_TYPE) as SendPresenter.Type
         presenter.blockchainCommission = intent!!.extras!!.getLong(KEY_INTENT_BLOCKCHAIN_COMMISSION)
         presenter.feeAsset = intent!!.extras!!.getParcelable(KEY_INTENT_FEE_ASSET)
@@ -166,7 +172,7 @@ class SendConfirmationActivity : BaseActivity(), SendConfirmationView {
     }
 
     private fun setSaveAddress(signed: TransactionsBroadcastRequest) {
-        val addressBookUser = queryFirst<AddressBookUser> {
+        val addressBookUser = queryFirst<AddressBookUserDb> {
             equalTo("address", signed.recipient)
         }
         if (addressBookUser == null) {
@@ -175,7 +181,7 @@ class SendConfirmationActivity : BaseActivity(), SendConfirmationView {
             add_address.click {
                 launchActivity<AddAddressActivity>(AddressBookActivity.REQUEST_ADD_ADDRESS) {
                     putExtra(AddressBookActivity.BUNDLE_TYPE, AddressBookActivity.SCREEN_TYPE_NOT_EDITABLE)
-                    putExtra(AddressBookActivity.BUNDLE_ADDRESS_ITEM, AddressBookUser(signed.recipient, ""))
+                    putExtra(AddressBookActivity.BUNDLE_ADDRESS_ITEM, AddressBookUserDb(signed.recipient, ""))
                 }
             }
         } else {

@@ -2,16 +2,18 @@ package com.wavesplatform.wallet.v2.ui.home.dex.trade.orderbook
 
 import com.arellomobile.mvp.InjectViewState
 import com.chad.library.adapter.base.entity.MultiItemEntity
-import com.wavesplatform.wallet.v1.util.MoneyUtil
+import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.model.local.LastPriceItem
-import com.wavesplatform.wallet.v2.data.model.local.WatchMarket
-import com.wavesplatform.wallet.v2.data.model.remote.response.LastTradesResponse
-import com.wavesplatform.wallet.v2.data.model.remote.response.OrderBook
+import com.wavesplatform.sdk.model.WatchMarket
+import com.wavesplatform.sdk.model.response.LastTradesResponse
+import com.wavesplatform.sdk.model.response.OrderBook
+import com.wavesplatform.sdk.utils.clearBalance
+import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.sdk.utils.stripZeros
+import com.wavesplatform.wallet.v2.data.model.local.OrderBookAskMultiItemEntity
+import com.wavesplatform.wallet.v2.data.model.local.OrderBookBidMultiItemEntity
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.util.clearBalance
-import com.wavesplatform.wallet.v2.util.notNull
-import com.wavesplatform.wallet.v2.util.stripZeros
 import io.reactivex.Observable
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
@@ -70,8 +72,9 @@ class TradeOrderBookPresenter @Inject constructor() : BasePresenter<TradeOrderBo
 
     }
 
-    private fun getCalculatedBids(list: List<OrderBook.Bid>): Collection<MultiItemEntity> {
+    private fun getCalculatedBids(list: List<OrderBook.Bid>): List<MultiItemEntity> {
         var sum = 0.0
+        val orderBookBids = mutableListOf<OrderBookBidMultiItemEntity>()
         list.forEach {
             val amountUIValue = MoneyUtil.getScaledText(it.amount, watchMarket?.market?.amountAssetDecimals
                     ?: 0).stripZeros()
@@ -79,12 +82,14 @@ class TradeOrderBookPresenter @Inject constructor() : BasePresenter<TradeOrderBo
                     ?: 0, watchMarket?.market?.priceAssetDecimals ?: 0).stripZeros()
             sum += amountUIValue.clearBalance().toDouble() * priceUIValue.clearBalance().toDouble()
             it.sum = sum
+            orderBookBids.add(OrderBookBidMultiItemEntity(it))
         }
-        return list
+        return orderBookBids
     }
 
-    private fun getCalculatedAsks(list: List<OrderBook.Ask>): List<OrderBook.Ask> {
+    private fun getCalculatedAsks(list: List<OrderBook.Ask>): List<MultiItemEntity> {
         var sum = 0.0
+        val orderBookAsks = mutableListOf<OrderBookAskMultiItemEntity>()
         list.forEach {
             val amountUIValue = MoneyUtil.getScaledText(it.amount, watchMarket?.market?.amountAssetDecimals
                     ?: 0).stripZeros()
@@ -92,8 +97,9 @@ class TradeOrderBookPresenter @Inject constructor() : BasePresenter<TradeOrderBo
                     ?: 0, watchMarket?.market?.priceAssetDecimals ?: 0).stripZeros()
             sum += amountUIValue.clearBalance().toDouble() * priceUIValue.clearBalance().toDouble()
             it.sum = sum
+            orderBookAsks.add(OrderBookAskMultiItemEntity(it))
         }
-        return list
+        return orderBookAsks
     }
 
     override fun onDestroy() {

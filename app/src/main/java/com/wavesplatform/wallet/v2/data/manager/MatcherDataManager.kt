@@ -5,17 +5,19 @@ import com.google.common.primitives.Longs
 import com.google.gson.internal.LinkedTreeMap
 import com.vicpin.krealmextensions.queryAllAsSingle
 import com.wavesplatform.wallet.App
-import com.wavesplatform.wallet.v1.crypto.Base58
-import com.wavesplatform.wallet.v1.crypto.CryptoProvider
-import com.wavesplatform.wallet.v1.util.PrefsUtil
+import com.wavesplatform.sdk.crypto.Base58
+import com.wavesplatform.sdk.crypto.CryptoProvider
+import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.manager.base.BaseDataManager
-import com.wavesplatform.wallet.v2.data.model.local.WatchMarket
-import com.wavesplatform.wallet.v2.data.model.remote.request.CancelOrderRequest
-import com.wavesplatform.wallet.v2.data.model.remote.request.OrderRequest
-import com.wavesplatform.wallet.v2.data.model.remote.response.*
-import com.wavesplatform.wallet.v2.util.notNull
+import com.wavesplatform.sdk.model.WatchMarket
+import com.wavesplatform.sdk.model.request.CancelOrderRequest
+import com.wavesplatform.sdk.model.request.OrderRequest
+import com.wavesplatform.sdk.model.response.*
+import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.wallet.v2.data.model.db.MarketResponseDb
+import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function3
@@ -53,7 +55,7 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
         return matcherService.getOrderBook(watchMarket?.market?.amountAsset, watchMarket?.market?.priceAsset)
     }
 
-    fun cancelOrder(orderId: String?, watchMarket: WatchMarket?, cancelOrderRequest: CancelOrderRequest): Observable<Any> {
+    fun cancelOrder(orderId: String, watchMarket: WatchMarket?, cancelOrderRequest: CancelOrderRequest): Observable<Any> {
         cancelOrderRequest.sender = getPublicKeyStr()
         cancelOrderRequest.orderId = orderId
         App.getAccessManager().getWallet()?.privateKey.notNull {
@@ -155,15 +157,13 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
     }
 
     private fun filterMarketsBySpamAndSelect(markets: List<MarketResponse>): Observable<MutableList<MarketResponse>> {
-        return Observable.zip(Observable.just(markets), queryAllAsSingle<SpamAsset>().toObservable()
+        return Observable.zip(Observable.just(markets), queryAllAsSingle<SpamAssetDb>().toObservable()
                 .map {
-                    val map = it.associateBy { it.assetId }
-                    return@map map
+                    return@map SpamAssetDb.convertFromDb(it).associateBy { it.assetId }
                 },
-                queryAllAsSingle<MarketResponse>().toObservable()
+                queryAllAsSingle<MarketResponseDb>().toObservable()
                         .map {
-                            val map = it.associateBy { it.id }
-                            return@map map
+                            return@map MarketResponseDb.convertFromDb(it).associateBy { it.id }
                         }
                 , Function3 { apiMarkets: List<MarketResponse>, spamAssets: Map<String?, SpamAsset>, dbMarkets: Map<String?, MarketResponse> ->
             val filteredSpamList = if (prefsUtil.getValue(PrefsUtil.KEY_ENABLE_SPAM_FILTER, true)) {

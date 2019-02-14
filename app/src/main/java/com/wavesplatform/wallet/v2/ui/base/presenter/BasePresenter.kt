@@ -1,12 +1,13 @@
 package com.wavesplatform.wallet.v2.ui.base.presenter
 
-import android.util.Log
 import com.arellomobile.mvp.MvpPresenter
 import com.arellomobile.mvp.MvpView
-import com.wavesplatform.wallet.v1.util.AppUtil
-import com.wavesplatform.wallet.v1.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.local.PreferencesHelper
-import com.wavesplatform.wallet.v2.data.manager.*
+import com.wavesplatform.wallet.v2.data.manager.ApiDataManager
+import com.wavesplatform.wallet.v2.data.manager.MatcherDataManager
+import com.wavesplatform.wallet.v2.data.manager.NodeDataManager
+import com.wavesplatform.wallet.v2.data.manager.SpamDataManager
+import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.util.RxEventBus
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
@@ -26,7 +27,6 @@ open class BasePresenter<T : MvpView> @Inject constructor(): MvpPresenter<T>(){
     @Inject lateinit var spamDataManager: SpamDataManager
     @Inject lateinit var prefsUtil: PrefsUtil
     @Inject lateinit var rxEventBus: RxEventBus
-    @Inject lateinit var appUtil: AppUtil
 
     private val mCompositeDisposable = CompositeDisposable()
 

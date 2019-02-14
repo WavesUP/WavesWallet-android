@@ -11,15 +11,14 @@ import com.chad.library.adapter.base.BaseViewHolder
 import com.oushangfeng.pinnedsectionitemdecoration.utils.FullSpanUtil
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v1.util.PrefsUtil
+import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.wallet.v2.data.model.remote.response.Transaction
-import com.wavesplatform.wallet.v2.data.model.remote.response.TransactionType
+import com.wavesplatform.sdk.model.response.Transaction
+import com.wavesplatform.sdk.model.response.TransactionType
+import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.v2.util.*
-import com.wavesplatform.wallet.v2.util.TransactionUtil.Companion.getTransactionAmount
 import kotlinx.android.synthetic.main.recycle_item_history.view.*
-import org.spongycastle.asn1.x500.style.RFC4519Style.title
 import pers.victor.ext.dp2px
 import pers.victor.ext.gone
 import pers.victor.ext.visiable
@@ -94,7 +93,7 @@ class HistoryTabItemAdapter @Inject constructor() :
                             TransactionType.MASS_SPAM_RECEIVE_TYPE,
                             TransactionType.MASS_RECEIVE_TYPE,
                             TransactionType.MASS_SEND_TYPE -> {
-                                view.text_transaction_value.text = getTransactionAmount(
+                                view.text_transaction_value.text = TransactionUtil.getTransactionAmount(
                                         transaction = item.data, decimals = decimals)
                             }
                             TransactionType.CREATE_ALIAS_TYPE -> {

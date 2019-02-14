@@ -1,20 +1,20 @@
 package com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.order
 
 import com.arellomobile.mvp.InjectViewState
+import com.wavesplatform.sdk.model.OrderType
+import com.wavesplatform.sdk.utils.TransactionUtil
 import com.wavesplatform.wallet.v2.data.model.local.BuySellData
 import com.wavesplatform.wallet.v2.data.model.local.OrderExpiration
-import com.wavesplatform.wallet.v2.data.model.local.OrderType
-import com.wavesplatform.wallet.v2.data.model.remote.request.OrderRequest
-import com.wavesplatform.wallet.v2.data.model.remote.response.*
-import com.wavesplatform.wallet.v2.data.model.remote.response.AssetBalance
-import com.wavesplatform.wallet.v2.data.model.remote.response.OrderBook
+import com.wavesplatform.sdk.model.request.OrderRequest
+import com.wavesplatform.sdk.model.response.*
+import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.model.response.OrderBook
+import com.wavesplatform.sdk.utils.clearBalance
+import com.wavesplatform.sdk.utils.isWaves
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.TradeBuyAndSellBottomSheetFragment
 import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.util.TransactionUtil
-import com.wavesplatform.wallet.v2.util.clearBalance
 import com.wavesplatform.wallet.v2.util.errorBody
-import com.wavesplatform.wallet.v2.util.isWaves
 import io.reactivex.Observable
 import io.reactivex.functions.Function3
 import pers.victor.ext.currentTimeMillis
@@ -108,10 +108,10 @@ class TradeOrderPresenter @Inject constructor() : BasePresenter<TradeOrderView>(
     private fun createPair(): OrderBook.Pair {
         val amountAsset =
                 if (data?.watchMarket?.market?.amountAsset?.isWaves() == true) ""
-                else data?.watchMarket?.market?.amountAsset
+                else data?.watchMarket?.market?.amountAsset ?: ""
         val priceAsset =
                 if (data?.watchMarket?.market?.priceAsset?.isWaves() == true) ""
-                else data?.watchMarket?.market?.priceAsset
+                else data?.watchMarket?.market?.priceAsset ?: ""
 
         return OrderBook.Pair(amountAsset, priceAsset)
     }

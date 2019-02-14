@@ -5,14 +5,15 @@ import com.vicpin.krealmextensions.queryFirst
 import com.vicpin.krealmextensions.save
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.wallet.v2.data.model.remote.response.AssetBalance
-import com.wavesplatform.wallet.v2.data.model.remote.response.Transaction
-import com.wavesplatform.wallet.v2.data.model.remote.response.TransactionType
+import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.model.response.Transaction
+import com.wavesplatform.sdk.model.response.TransactionType
+import com.wavesplatform.sdk.utils.isWavesId
+import com.wavesplatform.sdk.utils.transactionType
+import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.util.isWavesId
-import com.wavesplatform.wallet.v2.util.notNull
-import com.wavesplatform.wallet.v2.util.transactionType
+import com.wavesplatform.sdk.utils.notNull
 import io.reactivex.Observable
 import pyxis.uzuki.live.richutilskt.utils.runAsync
 import pyxis.uzuki.live.richutilskt.utils.runOnUiThread
@@ -59,13 +60,13 @@ class AssetDetailsContentPresenter @Inject constructor() : BasePresenter<AssetDe
                 assetBalance?.assetId ?: "")
                 .compose(RxUtil.applyObservableDefaultSchedulers())
                 .subscribe { assetAddressBalance ->
-                    val dbAssetBalance = queryFirst<AssetBalance> {
+                    val dbAssetBalance = queryFirst<AssetBalanceDb> {
                         equalTo("assetId", assetBalance?.assetId ?: "")
                     }
                     dbAssetBalance.notNull {
                         it.balance = assetAddressBalance.balance
                         it.save()
-                        viewState.onAssetAddressBalanceLoadSuccess(it)
+                        viewState.onAssetAddressBalanceLoadSuccess(it.convertFromDb())
                     }
                 })
     }

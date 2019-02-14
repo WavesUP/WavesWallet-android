@@ -4,21 +4,22 @@ import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryFirst
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v1.crypto.Base58
-import com.wavesplatform.wallet.v1.crypto.Hash
-import com.wavesplatform.wallet.v1.request.TransferTransactionRequest
-import com.wavesplatform.wallet.v1.ui.auth.EnvironmentManager
-import com.wavesplatform.wallet.v1.util.MoneyUtil
+import com.wavesplatform.sdk.crypto.Base58
+import com.wavesplatform.sdk.crypto.Hash
+import com.wavesplatform.wallet.v2.util.EnvironmentManager
+import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.manager.CoinomatManager
-import com.wavesplatform.wallet.v2.data.model.remote.request.TransactionsBroadcastRequest
-import com.wavesplatform.wallet.v2.data.model.remote.response.*
+import com.wavesplatform.sdk.model.request.TransactionsBroadcastRequest
+import com.wavesplatform.sdk.model.request.TransferTransactionRequest
+import com.wavesplatform.sdk.model.response.*
+import com.wavesplatform.sdk.utils.TransactionUtil.Companion.countCommission
+import com.wavesplatform.sdk.utils.isValidAddress
+import com.wavesplatform.sdk.utils.isWaves
+import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.util.TransactionUtil.Companion.countCommission
 import com.wavesplatform.wallet.v2.util.isSpamConsidered
-import com.wavesplatform.wallet.v2.util.isValidAddress
-import com.wavesplatform.wallet.v2.util.isWaves
 import io.reactivex.Observable
 import io.reactivex.functions.Function3
 import pyxis.uzuki.live.richutilskt.utils.runAsync
@@ -117,7 +118,7 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
     private fun isGatewayAmountError(): Boolean {
         if (type == Type.GATEWAY && selectedAsset != null && gatewayMax.toFloat() > 0) {
             val totalAmount = amount + gatewayCommission
-            val balance = BigDecimal.valueOf(selectedAsset!!.balance ?: 0,
+            val balance = BigDecimal.valueOf(selectedAsset!!.getAvailableBalance(),
                     selectedAsset!!.getDecimals())
             return !(balance >= totalAmount
                     && totalAmount >= gatewayMin
@@ -128,11 +129,12 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
 
     private fun isFundSufficient(tx: TransactionsBroadcastRequest): Boolean {
         return if (isSameSendingAndFeeAssets()) {
-            tx.amount + tx.fee <= selectedAsset!!.balance!!
+            tx.amount + tx.fee <= selectedAsset!!.getAvailableBalance()
         } else {
-            val validFee = if (tx.feeAssetId?.isWaves() == true){
-                tx.fee <= queryFirst<AssetBalance> { equalTo("assetId", "") }?.balance ?: 0
-            }else{
+            val validFee = if (tx.feeAssetId.isWaves()) {
+                tx.fee <= queryFirst<AssetBalanceDb> {
+                    equalTo("assetId", "") }?.convertFromDb()?.balance ?: 0
+            } else {
                 true
             }
 

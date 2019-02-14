@@ -13,6 +13,7 @@ import android.view.*
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.novoda.simplechromecustomtabs.SimpleChromeCustomTabs
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.BuildConfig
 import com.wavesplatform.wallet.R
@@ -110,7 +111,7 @@ class ProfileFragment : BaseFragment(), ProfileView {
                 App.getAccessManager().deleteCurrentWavesWallet()
 
                 presenter.prefsUtil.logOut()
-                presenter.appUtil.restartApp()
+                restartApp()
                 dialog.dismiss()
             }
             alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, getString(R.string.profile_general_delete_account_dialog_cancel)) { dialog, _ ->

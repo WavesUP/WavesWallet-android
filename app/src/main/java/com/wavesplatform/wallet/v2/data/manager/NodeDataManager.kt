@@ -4,17 +4,21 @@ import android.arch.lifecycle.Lifecycle
 import android.arch.lifecycle.ProcessLifecycleOwner
 import android.text.TextUtils
 import com.vicpin.krealmextensions.*
+import com.wavesplatform.sdk.model.request.*
+import com.wavesplatform.sdk.utils.TransactionUtil
 import com.wavesplatform.wallet.App
-import com.wavesplatform.wallet.v1.util.PrefsUtil
+import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
+import com.wavesplatform.sdk.model.response.*
+import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.sdk.utils.sumByLong
 import com.wavesplatform.wallet.v2.data.manager.base.BaseDataManager
+import com.wavesplatform.wallet.v2.data.model.db.AliasDb
+import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
+import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
+import com.wavesplatform.wallet.v2.data.model.db.TransactionDb
 import com.wavesplatform.wallet.v2.data.model.local.LeasingStatus
-import com.wavesplatform.wallet.v2.data.model.remote.request.*
-import com.wavesplatform.wallet.v2.data.model.remote.response.*
-import com.wavesplatform.wallet.v2.util.TransactionUtil
-import com.wavesplatform.wallet.v2.util.notNull
-import com.wavesplatform.wallet.v2.util.sumByLong
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function3
@@ -28,13 +32,11 @@ import kotlin.collections.ArrayList
 
 @Singleton
 class NodeDataManager @Inject constructor() : BaseDataManager() {
-    @Inject
-    lateinit var transactionUtil: TransactionUtil
+
     @Inject
     lateinit var apiDataManager: ApiDataManager
     @Inject
     lateinit var matcherDataManager: MatcherDataManager
-    var transactions: List<Transaction> = ArrayList()
 
     fun loadSpamAssets(): Observable<ArrayList<SpamAsset>> {
         return spamService.spamAssets(prefsUtil.getValue(PrefsUtil.KEY_SPAM_URL, Constants.URL_SPAM_FILE))
@@ -47,8 +49,8 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
                     scanner.close()
 
                     // clear old spam list and save new
-                    deleteAll<SpamAsset>()
-                    spam.saveAll()
+                    deleteAll<SpamAssetDb>()
+                    SpamAssetDb.convertToDb(spam).saveAll()
 
                     return@map spam
                 }.map { spamListFromDb ->
@@ -133,10 +135,8 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
                                         }
                                     }
                                 }
-
-                                tripple.third.balances.saveAll()
-
-                                return@map queryAll<AssetBalance>()
+                                AssetBalanceDb.convertToDb(tripple.third.balances).saveAll()
+                                return@map AssetBalanceDb.convertFromDb(queryAll())
                             }
                             .subscribeOn(Schedulers.io())
                 }
@@ -150,7 +150,7 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
 
             offsetAsset?.forEach { id ->
                 if (id.isNotEmpty()) {
-                    val assetBalance = queryFirst<AssetBalance> { equalTo("assetId", id) }
+                    val assetBalance = queryFirst<AssetBalanceDb> { equalTo("assetId", id) }
                     if (assetBalance?.isGateway == false) {
                         assetBalance.delete { equalTo("assetId", id) }
                     } else {
@@ -182,7 +182,7 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
                     currentWaves.balance = totalBalance
                     currentWaves.leasedBalance = leasedBalance
                     currentWaves.inOrderBalance = inOrderBalance
-                    currentWaves.save()
+                    AssetBalanceDb(currentWaves).save()
                     return@Function3 currentWaves
                 })
     }
@@ -196,7 +196,7 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
         return nodeService.createAlias(createAliasRequest)
                 .map {
                     it.address = getAddress()
-                    it.save()
+                    AliasDb(it).save()
                     return@map it
                 }
                 .doOnNext {
@@ -207,13 +207,14 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
     fun cancelLeasing(cancelLeasingRequest: CancelLeasingRequest): Observable<Transaction> {
         cancelLeasingRequest.senderPublicKey = getPublicKeyStr()
         cancelLeasingRequest.timestamp = currentTimeMillis
-
         App.getAccessManager().getWallet()?.privateKey.notNull {
             cancelLeasingRequest.sign(it)
         }
         return nodeService.cancelLeasing(cancelLeasingRequest)
                 .map {
-                    val first = queryFirst<Transaction> { equalTo("id", cancelLeasingRequest.leaseId) }
+                    val first = queryFirst<TransactionDb> {
+                        equalTo("id", cancelLeasingRequest.leaseId)
+                    }
                     first?.status = LeasingStatus.CANCELED.status
                     first?.save()
                     return@map it
@@ -271,13 +272,14 @@ class NodeDataManager @Inject constructor() : BaseDataManager() {
                 .onErrorResumeNext(Observable.empty())
     }
 
-    fun activeLeasing(): Observable<List<Transaction>> {
+    private fun activeLeasing(): Observable<List<Transaction>> {
         return nodeService.activeLeasing(getAddress())
                 .map {
                     return@map it.filter {
                         it.asset = Constants.wavesAssetInfo
-                        it.transactionTypeId = transactionUtil.getTransactionType(it)
-                        it.transactionTypeId == Constants.ID_STARTED_LEASING_TYPE && it.sender == App.getAccessManager().getWallet()?.address
+                        it.transactionTypeId = TransactionUtil.getTransactionType(it)
+                        it.transactionTypeId == Constants.ID_STARTED_LEASING_TYPE
+                                && it.sender == App.getAccessManager().getWallet()?.address
                     }
                 }
                 .flatMap {
