@@ -9,16 +9,18 @@ import android.support.v7.widget.AppCompatImageView
 import android.text.TextPaint
 import android.text.TextUtils
 import android.util.AttributeSet
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
 import com.sdsmdg.harjot.vectormaster.VectorMasterDrawable
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.AssetInfo
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.utils.Constants.Companion.WCT_GENERAL_ASSET
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.AssetInfo
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v2.data.Constants
 import pers.victor.ext.findColor
 import pers.victor.ext.resize
 import pers.victor.ext.sp
 import pyxis.uzuki.live.richutilskt.utils.drawableToBitmap
-
 
 class AssetAvatarView : AppCompatImageView {
 
@@ -85,24 +87,16 @@ class AssetAvatarView : AppCompatImageView {
     * Set asset object to get initials for drawable
     * */
     fun setAsset(asset: AssetBalance?) {
-        val avatar = Constants.defaultAssetsAvatar[asset?.assetId]
-        if (avatar != null) {
-            setImageResource(avatar)
-        } else {
-            setValues(asset?.getName() ?: "", asset?.isSponsored() == true)
-        }
+        setValues(asset?.assetId ?: " ", asset?.getName() ?: " ",
+                asset?.isSponsored() == true,
+                asset?.isScripted() == true)
     }
 
     /*
    * Set asset info object to get initials for drawable
    * */
-    fun setAssetInfo(asset: AssetInfo) {
-        val avatar = Constants.defaultAssetsAvatar[asset.id]
-        if (avatar != null) {
-            setImageResource(avatar)
-        } else {
-            setValues(asset.name, false) // TODO: check if need to show sponsor asset icon here
-        }
+    fun setAsset(asset: AssetInfo) {
+        setValues(asset.id, asset.name, asset.isSponsored(), asset.hasScript)
     }
 
     /*
@@ -114,7 +108,7 @@ class AssetAvatarView : AppCompatImageView {
         }
 
         val letter = text.trim().substring(0, 1)
-        val letterColor = Constants.alphabetColor[letter.toLowerCase()]
+        val letterColor = com.wavesplatform.wallet.v2.data.Constants.alphabetColor[letter.toLowerCase()]
 
         return if (letterColor != null) {
             letter.toUpperCase()
@@ -124,10 +118,11 @@ class AssetAvatarView : AppCompatImageView {
     }
 
     private fun getPlaceholderColorFromAssetName(text: String?): Int {
-        if (TextUtils.isEmpty(text)) {
-            findColor(R.color.persist)
+        if (TextUtils.isEmpty(text?.trim())) {
+            return findColor(R.color.persist)
         }
-        val letterColor = Constants.alphabetColor[text!!.trim().substring(0, 1).toLowerCase()]
+
+        val letterColor = com.wavesplatform.wallet.v2.data.Constants.alphabetColor[text!!.trim().substring(0, 1).toLowerCase()]
 
         return if (letterColor != null) {
             findColor(letterColor)
@@ -139,24 +134,40 @@ class AssetAvatarView : AppCompatImageView {
     /*
     * Setup view with values
     * */
-    private fun setValues(name: String, isSponsoredAsset: Boolean) {
+    private fun setValues(assetId: String, name: String, isSponsoredAsset: Boolean, isScriptAsset: Boolean) {
+        val avatar = when (assetId) {
+            WCT_GENERAL_ASSET.assetId -> R.drawable.ic_logo_wct_48
+            "" -> Constants.defaultAssetsAvatar()[Constants.WAVES_ASSET_ID_FILLED]
+            else -> Constants.defaultAssetsAvatar()[assetId]
+        }
+
         val color = getPlaceholderColorFromAssetName(name)
         paint.color = color
         text = getInitialsFromAssetName(name)
-        setDrawable(isSponsoredAsset)
-    }
 
+        setDrawable(isSponsoredAsset, isScriptAsset)
+
+        if (avatar != null) {
+            Glide.with(context)
+                    .load(avatar)
+                    .apply(RequestOptions()
+                            .placeholder(drawable)
+                            .centerCrop()
+                            .override(drawable.intrinsicWidth, drawable.intrinsicHeight))
+                    .into(this)
+        }
+    }
 
     /*
     * Create placeholder drawable
     * */
-    private fun setDrawable(sponsoredAsset: Boolean) {
+    private fun setDrawable(sponsoredAsset: Boolean, scriptAsset: Boolean) {
         drawable = object : Drawable() {
             override fun draw(@NonNull canvas: Canvas) {
 
                 val centerX = Math.round(canvas.width * 0.5f)
                 val centerY = Math.round(canvas.height * 0.5f)
-                val sponsorIconSize = canvas.width.toFloat() * SPONSOR_ICON_SCALE_FACTOR
+                val iconSize = canvas.width.toFloat() * SPONSOR_ICON_SCALE_FACTOR
 
                 if (text != null) {
                     val textWidth = textPaint.measureText(text) * 0.5f
@@ -174,30 +185,21 @@ class AssetAvatarView : AppCompatImageView {
                     * */
                     canvas.drawText(text!!, centerX - textWidth, centerY + textBaseLineHeight, textPaint)
 
-
                     /*
-                    * Draw sponsor icon
-                    * */
+                   * Draw sponsor or script icon
+                   * */
                     if (sponsoredAsset) {
-                        val vectorMasterDrawable = VectorMasterDrawable(context, R.drawable.ic_sponsoritem_18_color)
-                        val pathModel = vectorMasterDrawable.getPathModelByName("background")
-                        pathModel.fillColor = paint.color
-
-                        canvas.drawBitmap(drawableToBitmap(vectorMasterDrawable).resize(sponsorIconSize, sponsorIconSize),
-                                (canvas.width - sponsorIconSize).toFloat(),
-                                (canvas.width - sponsorIconSize).toFloat(),
-                                paint)
+                        drawIcon(canvas, iconSize, R.drawable.ic_sponsoritem_18_color)
+                    } else if (scriptAsset) {
+                        drawIcon(canvas, iconSize, R.drawable.ic_scriptasset_18_color)
                     }
-
                 }
             }
 
             override fun setAlpha(alpha: Int) {
-
             }
 
             override fun setColorFilter(colorFilter: ColorFilter?) {
-
             }
 
             override fun getOpacity(): Int {
@@ -207,6 +209,17 @@ class AssetAvatarView : AppCompatImageView {
 
         setImageDrawable(drawable)
         invalidate()
+    }
+
+    private fun drawIcon(canvas: Canvas, sponsorIconSize: Double, icon: Int) {
+        val vectorMasterDrawable = VectorMasterDrawable(context, icon)
+        val pathModel = vectorMasterDrawable.getPathModelByName("background")
+        pathModel.fillColor = paint.color
+
+        canvas.drawBitmap(drawableToBitmap(vectorMasterDrawable).resize(sponsorIconSize, sponsorIconSize),
+                (canvas.width - sponsorIconSize).toFloat(),
+                (canvas.width - sponsorIconSize).toFloat(),
+                paint)
     }
 
     /*

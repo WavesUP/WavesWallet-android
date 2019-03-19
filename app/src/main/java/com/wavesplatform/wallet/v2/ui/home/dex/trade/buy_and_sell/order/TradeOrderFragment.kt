@@ -7,20 +7,19 @@ import android.widget.Button
 import android.widget.EditText
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
-import com.google.gson.internal.LinkedTreeMap
 import com.jakewharton.rxbinding2.widget.RxTextView
+import com.wavesplatform.sdk.utils.Constants
 import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.local.BuySellData
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.custom.CounterHandler
-import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.SuccessOrderListener
+import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.OrderListener
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.TradeBuyAndSellBottomSheetFragment
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.success.TradeBuyAndSendSuccessActivity
 import com.wavesplatform.wallet.v2.ui.home.wallet.leasing.start.StartLeasingActivity.Companion.TOTAL_BALANCE
 import com.wavesplatform.wallet.v2.util.*
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.fragment_trade_order.*
 import pers.victor.ext.*
@@ -28,7 +27,6 @@ import pyxis.uzuki.live.richutilskt.utils.asDateString
 import java.math.BigDecimal
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-
 
 class TradeOrderFragment : BaseFragment(), TradeOrderView {
 
@@ -40,18 +38,18 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
     @ProvidePresenter
     fun providePresenter(): TradeOrderPresenter = presenter
 
-    var successListener: SuccessOrderListener? = null
+    var orderListener: OrderListener? = null
 
     override fun configLayoutRes() = R.layout.fragment_trade_order
 
     companion object {
-        fun newInstance(orderType: Int, data: BuySellData?, listener: SuccessOrderListener): TradeOrderFragment {
+        fun newInstance(orderType: Int, data: BuySellData?, listener: OrderListener): TradeOrderFragment {
             val args = Bundle()
             args.classLoader = BuySellData::class.java.classLoader
             args.putParcelable(TradeBuyAndSellBottomSheetFragment.BUNDLE_DATA, data)
             args.putInt(TradeBuyAndSellBottomSheetFragment.BUNDLE_ORDER_TYPE, orderType)
             val fragment = TradeOrderFragment()
-            fragment.successListener = listener
+            fragment.orderListener = listener
             fragment.arguments = args
             return fragment
         }
@@ -63,8 +61,16 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
             presenter.orderType = it.getInt(TradeBuyAndSellBottomSheetFragment.BUNDLE_ORDER_TYPE)
         }
 
+        if (presenter.orderType == TradeBuyAndSellBottomSheetFragment.SELL_TYPE) {
+            horizontal_amount_suggestion.visiable()
+            horizontal_total_suggestion.gone()
+        } else {
+            horizontal_amount_suggestion.gone()
+            horizontal_total_suggestion.visiable()
+        }
+
         presenter.getMatcherKey()
-        presenter.getBalanceFromAssetPair()
+        presenter.loadPairBalancesAndCommission()
         presenter.loadWavesBalance()
 
         edit_amount.applyFilterStartWithDot()
@@ -123,7 +129,6 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
                     }
                 })
                 .build()
-
 
         eventSubscriptions.add(RxTextView.textChanges(edit_amount)
                 .skipInitialValue()
@@ -299,10 +304,9 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
                     it.printStackTrace()
                 }))
 
-
         horizontal_limit_price_suggestion.goneIf {
-            presenter.data?.lastPrice == null
-                    && presenter.data?.askPrice == null && presenter.data?.bidPrice == null
+            presenter.data?.lastPrice == null &&
+                    presenter.data?.askPrice == null && presenter.data?.bidPrice == null
         }
         text_bid.goneIf { presenter.data?.bidPrice == null }
         text_ask.goneIf { presenter.data?.askPrice == null }
@@ -395,9 +399,6 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
         button_confirm.click {
             presenter.createOrder(edit_amount.text.toString(), edit_limit_price.text.toString())
         }
-
-        presenter.loadCommission(presenter.data?.watchMarket?.market?.priceAsset,
-                presenter.data?.watchMarket?.market?.amountAsset)
     }
 
     private fun getFeeIfNeed(): Long {
@@ -409,14 +410,14 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
     }
 
     private fun isValidWavesFee(): Boolean {
-        return if (presenter.wavesBalance.getAvailableBalance() ?: 0 > presenter.fee) {
+        return if (presenter.wavesBalance.getAvailableBalance() > presenter.fee) {
             true
         } else {
-            if (presenter.data?.watchMarket?.market?.amountAsset?.isWaves() == true
-                    && presenter.orderType == TradeBuyAndSellBottomSheetFragment.BUY_TYPE) {
+            if (presenter.data?.watchMarket?.market?.amountAsset?.isWaves() == true &&
+                    presenter.orderType == TradeBuyAndSellBottomSheetFragment.BUY_TYPE) {
                 edit_amount.text.toString().toBigDecimal() > getWavesDexFee(presenter.fee)
-            } else if (presenter.data?.watchMarket?.market?.priceAsset?.isWaves() == true
-                    && presenter.orderType == TradeBuyAndSellBottomSheetFragment.SELL_TYPE) {
+            } else if (presenter.data?.watchMarket?.market?.priceAsset?.isWaves() == true &&
+                    presenter.orderType == TradeBuyAndSellBottomSheetFragment.SELL_TYPE) {
                 edit_total_price.text.toString().toBigDecimal() > getWavesDexFee(presenter.fee)
             } else {
                 false
@@ -428,8 +429,8 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
         button_confirm.isEnabled = presenter.isAllFieldsValid() && isNetworkConnected()
     }
 
-    override fun successLoadPairBalance(pairBalance: LinkedTreeMap<String, Long>) {
-        pairBalance[presenter.data?.watchMarket?.market?.amountAsset].notNull { balance ->
+    override fun successLoadPairBalance(currentAmountBalance: Long?, currentPriceBalance: Long?) {
+        currentAmountBalance.notNull { balance ->
             linear_percent_values.children.forEach { children ->
                 var balance = balance
                 val quickBalanceView = children as AppCompatTextView
@@ -462,6 +463,42 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
                 }
             }
         }
+
+        currentPriceBalance.notNull { balance ->
+            linear_total_percent_values.children.forEach { children ->
+                var balance = balance
+                val quickBalanceView = children as AppCompatTextView
+                when (quickBalanceView.tag) {
+                    TOTAL_BALANCE -> {
+                        if (presenter.data?.watchMarket?.market?.priceAsset?.isWaves() == true) {
+                            if (balance < presenter.fee) {
+                                balance = 0
+                            } else {
+                                balance -= presenter.fee
+                            }
+                        }
+                        quickBalanceView.click {
+                            presenter.humanTotalTyping = true
+                            edit_total_price.setText((MoneyUtil.getScaledText(balance,
+                                    presenter.data?.watchMarket?.market?.priceAssetDecimals
+                                            ?: 0)).clearBalance())
+                            edit_total_price.setSelection(edit_total_price.text?.length ?: 0)
+                        }
+                    }
+                    else -> {
+                        val percentBalance = (balance.times((quickBalanceView.tag.toString().toDouble()
+                                .div(100)))).toLong()
+                        quickBalanceView.click {
+                            presenter.humanTotalTyping = true
+                            edit_total_price.setText(MoneyUtil.getScaledText(percentBalance,
+                                    presenter.data?.watchMarket?.market?.priceAssetDecimals
+                                            ?: 0).clearBalance())
+                            edit_total_price.setSelection(edit_total_price.text?.length ?: 0)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun successPlaceOrder() {
@@ -471,11 +508,13 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
             putExtra(TradeBuyAndSendSuccessActivity.BUNDLE_PRICE, edit_limit_price.text.toString())
             putExtra(TradeBuyAndSendSuccessActivity.BUNDLE_TIME, presenter.orderRequest.timestamp.asDateString("HH:mm:ss"))
         }
-        successListener?.onSuccessPlaceOrder()
+        orderListener?.onSuccessPlaceOrder()
     }
 
     override fun afterFailedPlaceOrder(message: String?) {
-        message.notNull { showError(it, R.id.root) }
+        message.notNull {
+            orderListener?.showError(it)
+        }
     }
 
     override fun onNetworkConnectionChanged(networkConnected: Boolean) {
@@ -490,7 +529,7 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
 
     override fun showCommissionSuccess(unscaledAmount: Long) {
         text_fee_value.text = "${getScaledAmount(unscaledAmount, 8)} " +
-                "${Constants.wavesAssetInfo.name}"
+                "${Constants.WAVES_ASSET_INFO.name}"
         progress_bar_fee_transaction.hide()
         text_fee_value.visiable()
     }
@@ -498,7 +537,7 @@ class TradeOrderFragment : BaseFragment(), TradeOrderView {
     override fun showCommissionError() {
         text_fee_value.text = "-"
         progress_bar_fee_transaction.hide()
-        showError(R.string.common_error_commission_receiving, R.id.root)
+        orderListener?.showError(getString(R.string.common_error_commission_receiving))
         text_fee_value.visiable()
     }
 

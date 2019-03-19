@@ -2,25 +2,21 @@ package com.wavesplatform.wallet.v2.ui.home.quick_action.send.confirmation
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryFirst
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.crypto.Base58
+import com.wavesplatform.sdk.net.model.request.TransactionsBroadcastRequest
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.AssetInfo
+import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.sdk.crypto.Base58
-import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.util.EnvironmentManager
-import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.util.PrefsUtil
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.manager.CoinomatManager
-import com.wavesplatform.sdk.model.request.TransactionsBroadcastRequest
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.AssetInfo
-import com.wavesplatform.sdk.utils.clearAlias
-import com.wavesplatform.sdk.utils.isSmartError
-import com.wavesplatform.sdk.utils.makeAsAlias
+import com.wavesplatform.wallet.v2.data.model.userdb.AddressBookUser
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.data.model.db.AddressBookUserDb
 import com.wavesplatform.wallet.v2.ui.home.quick_action.send.SendPresenter
 import com.wavesplatform.wallet.v2.util.errorBody
+import com.wavesplatform.wallet.v2.util.find
 import java.math.BigDecimal
 import javax.inject.Inject
 
@@ -39,8 +35,7 @@ class SendConfirmationPresenter @Inject constructor() : BasePresenter<SendConfir
     var type: SendPresenter.Type = SendPresenter.Type.UNKNOWN
     var gatewayCommission: BigDecimal = BigDecimal.ZERO
     var blockchainCommission = 0L
-    var feeAsset: AssetBalance = Constants.defaultAssets[0]
-
+    var feeAsset: AssetBalance = find(Constants.WAVES_ASSET_ID_EMPTY)!!
 
     fun confirmSend() {
         val singed = signTransaction()
@@ -52,8 +47,8 @@ class SendConfirmationPresenter @Inject constructor() : BasePresenter<SendConfir
     fun getTicker(): String {
         return if (assetInfo == null) {
             ""
-        } else if (assetInfo!!.ticker.equals(null)
-                || assetInfo!!.ticker.equals("")) {
+        } else if (assetInfo!!.ticker.equals(null) ||
+                assetInfo!!.ticker.equals("")) {
             assetInfo!!.name
         } else {
             assetInfo!!.ticker ?: ""
@@ -118,16 +113,14 @@ class SendConfirmationPresenter @Inject constructor() : BasePresenter<SendConfir
                 App.getAccessManager().getWallet()!!.publicKeyStr,
                 recipient!!,
                 MoneyUtil.getUnscaledValue(totalAmount.toPlainString(), selectedAsset),
-                System.currentTimeMillis(),
+                EnvironmentManager.getTime(),
                 blockchainCommission,
                 attachment,
                 feeAsset.assetId)
     }
 
     fun getAddressName(address: String) {
-        val addressBookUser = queryFirst<AddressBookUserDb> {
-            equalTo("address", address)
-        }
+        val addressBookUser = queryFirst<AddressBookUser> { equalTo("address", address)}
         if (addressBookUser == null) {
             viewState.hideAddressBookUser()
         } else {
@@ -137,18 +130,17 @@ class SendConfirmationPresenter @Inject constructor() : BasePresenter<SendConfir
 
     private fun createGateAndPayment() {
         val assetId = selectedAsset!!.assetId
-        val currencyTo = Constants.coinomatCryptoCurrencies[assetId]
-
+        val currencyTo = Constants.coinomatCryptoCurrencies()[assetId]
 
         if (currencyTo.isNullOrEmpty()) {
             viewState.onShowError(R.string.receive_error_network)
             return
         }
 
-        val currencyFrom = "${EnvironmentManager.getNetCode().toChar()}$currencyTo"
+        val currencyFrom = "${EnvironmentManager.netCode.toChar()}$currencyTo"
 
-        val moneroPaymentId = if (type == SendPresenter.Type.GATEWAY
-                && !this.moneroPaymentId.isNullOrEmpty()) {
+        val moneroPaymentId = if (type == SendPresenter.Type.GATEWAY &&
+                !this.moneroPaymentId.isNullOrEmpty()) {
             this.moneroPaymentId
         } else {
             null

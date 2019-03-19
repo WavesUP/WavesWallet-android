@@ -14,7 +14,7 @@ import com.jakewharton.rxbinding2.widget.RxTextView
 import com.mindorks.editdrawabletext.DrawablePosition
 import com.mindorks.editdrawabletext.OnDrawableClickListener
 import com.wavesplatform.wallet.R
-import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.AssetBalance
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_your_assets.*
@@ -24,7 +24,6 @@ import pers.victor.ext.inflate
 import pers.victor.ext.visiable
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-
 
 class YourAssetsActivity : BaseActivity(), YourAssetsView {
 
@@ -39,7 +38,6 @@ class YourAssetsActivity : BaseActivity(), YourAssetsView {
     fun providePresenter(): YourAssetsPresenter = presenter
 
     override fun configLayoutRes() = R.layout.activity_your_assets
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         overridePendingTransition(R.anim.slide_in_right, R.anim.null_animation)

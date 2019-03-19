@@ -4,24 +4,24 @@ import com.google.common.primitives.Bytes
 import com.google.common.primitives.Longs
 import com.google.gson.internal.LinkedTreeMap
 import com.vicpin.krealmextensions.queryAllAsSingle
-import com.wavesplatform.wallet.App
+import com.wavesplatform.sdk.utils.Constants
 import com.wavesplatform.sdk.crypto.Base58
 import com.wavesplatform.sdk.crypto.CryptoProvider
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.request.CancelOrderRequest
+import com.wavesplatform.sdk.net.model.request.OrderRequest
+import com.wavesplatform.sdk.net.model.response.*
+import com.wavesplatform.sdk.utils.EnvironmentManager
+import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.v2.util.PrefsUtil
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.manager.base.BaseDataManager
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.request.CancelOrderRequest
-import com.wavesplatform.sdk.model.request.OrderRequest
-import com.wavesplatform.sdk.model.response.*
-import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.v2.data.model.db.MarketResponseDb
 import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function3
-import pers.victor.ext.currentTimeMillis
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +30,7 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
     var allMarketsList = mutableListOf<MarketResponse>()
 
     fun loadReservedBalances(): Observable<Map<String, Long>> {
-        val timestamp = currentTimeMillis
+        val timestamp = EnvironmentManager.getTime()
         var signature = ""
         App.getAccessManager().getWallet()?.privateKey.notNull { privateKey ->
             val bytes = Bytes.concat(Base58.decode(getPublicKeyStr()),
@@ -41,7 +41,7 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
     }
 
     fun loadMyOrders(watchMarket: WatchMarket?): Observable<List<OrderResponse>> {
-        val timestamp = currentTimeMillis
+        val timestamp = EnvironmentManager.getTime()
         var signature = ""
         App.getAccessManager().getWallet()?.privateKey.notNull { privateKey ->
             val bytes = Bytes.concat(Base58.decode(getPublicKeyStr()),
@@ -86,14 +86,13 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
                 }
     }
 
-
     fun getAllMarkets(): Observable<MutableList<MarketResponse>> {
         if (allMarketsList.isEmpty()) {
-            return Observable.zip(apiService.loadGlobalConfiguration()
+            return Observable.zip(Observable.just(EnvironmentManager.globalConfiguration)
                     .map {
                         val globalAssets = it.generalAssetIds.toMutableList()
-                        globalAssets.add(Constants.MRTGeneralAsset)
-                        globalAssets.add(Constants.WCTGeneralAsset)
+                        globalAssets.add(Constants.MRT_GENERAL_ASSET)
+                        globalAssets.add(Constants.WCT_GENERAL_ASSET)
                         return@map globalAssets.associateBy { it.assetId }
                     },
                     matcherService.getAllMarkets()
@@ -114,11 +113,15 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
                         it.second.forEach { market ->
                             market.id = market.amountAsset + market.priceAsset
 
-                            market.amountAssetLongName = it.first[market.amountAsset]?.displayName ?: market.amountAssetName
-                            market.priceAssetLongName = it.first[market.priceAsset]?.displayName ?: market.priceAssetName
+                            market.amountAssetLongName = it.first[market.amountAsset]?.displayName
+                                    ?: market.amountAssetName
+                            market.priceAssetLongName = it.first[market.priceAsset]?.displayName
+                                    ?: market.priceAssetName
 
-                            market.amountAssetShortName = it.first[market.amountAsset]?.gatewayId ?: market.amountAssetName
-                            market.priceAssetShortName = it.first[market.priceAsset]?.gatewayId ?: market.priceAssetName
+                            market.amountAssetShortName = it.first[market.amountAsset]?.gatewayId
+                                    ?: market.amountAssetName
+                            market.priceAssetShortName = it.first[market.priceAsset]?.gatewayId
+                                    ?: market.priceAssetName
 
                             market.popular = it.first[market.amountAsset] != null && it.first[market.priceAsset] != null
 
@@ -150,10 +153,6 @@ class MatcherDataManager @Inject constructor() : BaseDataManager() {
         } else {
             return filterMarketsBySpamAndSelect(allMarketsList)
         }
-    }
-
-    fun getGlobalCommission(): Observable<GlobalTransactionCommission> {
-        return apiService.loadGlobalCommission()
     }
 
     private fun filterMarketsBySpamAndSelect(markets: List<MarketResponse>): Observable<MutableList<MarketResponse>> {

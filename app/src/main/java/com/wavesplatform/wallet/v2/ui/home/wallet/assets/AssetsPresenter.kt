@@ -1,21 +1,24 @@
-
 package com.wavesplatform.wallet.v2.ui.home.wallet.assets
 
 import com.arellomobile.mvp.InjectViewState
 import com.chad.library.adapter.base.entity.MultiItemEntity
+import com.vicpin.krealmextensions.queryAll
 import com.vicpin.krealmextensions.queryAllAsSingle
+import com.vicpin.krealmextensions.save
 import com.vicpin.krealmextensions.saveAll
 import com.wavesplatform.sdk.Wavesplatform
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.utils.RxUtil
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Events
-import com.wavesplatform.wallet.v2.data.model.local.WalletSectionItem
-import com.wavesplatform.sdk.model.response.AssetBalance
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
 import com.wavesplatform.wallet.v2.data.model.local.AssetBalanceMultiItemEntity
+import com.wavesplatform.wallet.v2.data.model.local.WalletSectionItem
+import com.wavesplatform.wallet.v2.data.model.userdb.AssetBalanceStore
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
 import io.reactivex.schedulers.Schedulers
@@ -31,12 +34,23 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
     fun loadAssetsBalance(withApiUpdate: Boolean = true) {
         viewState.startServiceToLoadData()
         runAsync {
+            val savedAssetPrefs = queryAll<AssetBalanceStore>()
             var dbAssets = mutableListOf<AssetBalanceDb>()
             addSubscription(queryAllAsSingle<AssetBalanceDb>().toObservable()
                     .subscribeOn(Schedulers.io())
                     .map {
-                        dbAssets = it.toMutableList()
-                        return@map createTripleSortedLists(it.toMutableList())
+                        val assetBalanceList = it.toMutableList()
+                        for (item in assetBalanceList) {
+                            val assetBalance = savedAssetPrefs.firstOrNull { it.assetId == item.assetId }
+                            assetBalance.notNull { storedAssetBalance ->
+                                item.isFavorite = storedAssetBalance.isFavorite
+                                item.position = storedAssetBalance.position
+                                item.isHidden = storedAssetBalance.isHidden
+                                item.save()
+                            }
+                        }
+                        dbAssets = assetBalanceList
+                        return@map createTripleSortedLists(assetBalanceList)
                     }
                     .doOnNext { postSuccess(it, withApiUpdate, true) }
                     .flatMap { tryUpdateWithApi(withApiUpdate, AssetBalanceDb.convertFromDb(dbAssets)) }
@@ -86,9 +100,13 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
                                     asset.position = assetsListFromDb.size + 1
                                 }
                             }
+                            if (asset.isSpam) {
+                                asset.isFavorite = false
+                            }
                         }
 
                         assetsListFromDb.saveAll()
+                        AssetBalanceStore.saveAssetBalanceStore(AssetBalanceDb.convertFromDb(assetsListFromDb))
                         return@map assetsListFromDb
                     }
                     .map { createTripleSortedLists(it.toMutableList()) }
@@ -132,9 +150,13 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
                                     asset.position = assetsListFromDb.size + 1
                                 }
                             }
+                            if (asset.isSpam) {
+                                asset.isFavorite = false
+                            }
                         }
 
                         assetsListFromDb.saveAll()
+                        AssetBalanceStore.saveAssetBalanceStore(AssetBalanceDb.convertFromDb(assetsListFromDb))
                         return@map assetsListFromDb
                     }
                     .map { createTripleSortedLists(it.toMutableList()) }
@@ -148,7 +170,6 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
         }
     }
 
-
     private fun tryUpdateWithApi(withApiUpdate: Boolean, it: List<AssetBalance>): Observable<List<AssetBalance>> {
         return if (withApiUpdate) {
             nodeDataManager.loadAssets(it)
@@ -157,9 +178,8 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
         }
     }
 
-    private fun postSuccess(it: Triple<MutableList<AssetBalanceDb>, MutableList<AssetBalanceDb>, MutableList<AssetBalanceDb>>,
-                            withApiUpdate: Boolean,
-                            fromDb: Boolean) {
+    private fun postSuccess(it: Triple<MutableList<AssetBalanceDb>, MutableList<AssetBalanceDb>,
+            MutableList<AssetBalanceDb>>, withApiUpdate: Boolean, fromDb: Boolean) {
         val listToShow = arrayListOf<MultiItemEntity>()
 
         // add all main assets
@@ -209,7 +229,8 @@ class AssetsPresenter @Inject constructor() : BasePresenter<AssetsView>() {
                 .sortedBy { it.position }
                 .sortedByDescending { it.isFavorite }
                 .toMutableList()
-        val spamList = list.filter { it.isSpam }
+        val spamList = list
+                .filter { it.isSpam }
                 .toMutableList()
         return Triple(sortedToFirstFavoriteList, hiddenList, spamList)
     }

@@ -5,14 +5,14 @@ import com.vicpin.krealmextensions.queryFirst
 import com.vicpin.krealmextensions.save
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.Transaction
-import com.wavesplatform.sdk.model.response.TransactionType
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.TransactionType
 import com.wavesplatform.sdk.utils.isWavesId
 import com.wavesplatform.sdk.utils.transactionType
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import com.wavesplatform.sdk.utils.notNull
 import io.reactivex.Observable
 import pyxis.uzuki.live.richutilskt.utils.runAsync
@@ -24,15 +24,16 @@ class AssetDetailsContentPresenter @Inject constructor() : BasePresenter<AssetDe
 
     var assetBalance: AssetBalance? = null
 
-    fun loadLastTransactionsFor(assetId: String, allTransactions: List<Transaction>) {
+    fun loadLastTransactionsFor(asset: AssetBalance, allTransactions: List<Transaction>) {
         runAsync {
             addSubscription(Observable.just(allTransactions)
                     .map {
                         return@map it.filter { transaction ->
-                            isNotSpam(transaction)
-                                    && (assetId.isWavesId() && transaction.assetId.isNullOrEmpty())
-                                    || AssetDetailsContentPresenter.isAssetIdInExchange(transaction, assetId)
-                                    || transaction.assetId == assetId
+                            isNotSpam(transaction) &&
+                                    (asset.assetId.isWavesId() && transaction.assetId.isNullOrEmpty() && !transaction.isSponsorshipTransaction()) ||
+                                    AssetDetailsContentPresenter.isAssetIdInExchange(transaction, asset.assetId) ||
+                                    transaction.assetId == asset.assetId && transaction.transactionType() != TransactionType.RECEIVE_SPONSORSHIP_TYPE ||
+                                    (transaction.feeAssetId == asset.assetId && transaction.isSponsorshipTransaction())
                         }
                                 .sortedByDescending { it.timestamp }
                                 .mapTo(ArrayList()) { HistoryItem(HistoryItem.TYPE_DATA, it) }
@@ -71,15 +72,14 @@ class AssetDetailsContentPresenter @Inject constructor() : BasePresenter<AssetDe
                 })
     }
 
-
     companion object {
         fun isAssetIdInExchange(transaction: Transaction, assetId: String) =
-                transaction.transactionType() == TransactionType.EXCHANGE_TYPE
-                        && (transaction.order1?.assetPair?.amountAssetObject?.id == assetId
-                        || transaction.order1?.assetPair?.priceAssetObject?.id == assetId)
+                transaction.transactionType() == TransactionType.EXCHANGE_TYPE &&
+                        (transaction.order1?.assetPair?.amountAssetObject?.id == assetId ||
+                        transaction.order1?.assetPair?.priceAssetObject?.id == assetId)
 
         private fun isNotSpam(transaction: Transaction) =
-                transaction.transactionType() != TransactionType.MASS_SPAM_RECEIVE_TYPE
-                        || transaction.transactionType() != TransactionType.SPAM_RECEIVE_TYPE
+                transaction.transactionType() != TransactionType.MASS_SPAM_RECEIVE_TYPE ||
+                        transaction.transactionType() != TransactionType.SPAM_RECEIVE_TYPE
     }
 }

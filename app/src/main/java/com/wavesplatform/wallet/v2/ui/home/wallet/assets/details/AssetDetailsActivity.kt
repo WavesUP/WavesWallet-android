@@ -11,18 +11,18 @@ import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.ethanhua.skeleton.Skeleton
 import com.ethanhua.skeleton.ViewSkeletonScreen
 import com.vicpin.krealmextensions.save
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.Transaction
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.Transaction
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
+import com.wavesplatform.wallet.v2.data.model.userdb.AssetBalanceStore
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.wallet.v2.ui.home.wallet.assets.AssetsFragment.Companion.RESULT_NEED_UPDATE
 import com.wavesplatform.wallet.v2.ui.welcome.AlphaScalePageTransformer
 import kotlinx.android.synthetic.main.activity_asset_details.*
 import pers.victor.ext.*
 import javax.inject.Inject
-
 
 class AssetDetailsActivity : BaseActivity(), AssetDetailsView {
 
@@ -180,12 +180,10 @@ class AssetDetailsActivity : BaseActivity(), AssetDetailsView {
     }
 
     private fun changeFavorite() {
-        if (!adapterAvatar.items[view_pager.currentItem].isWaves()) {
-            if (adapterAvatar.items[view_pager.currentItem].isFavorite) {
-                unmarkAsFavorite()
-            } else {
-                markAsFavorite()
-            }
+        if (adapterAvatar.items[view_pager.currentItem].isFavorite) {
+            unmarkAsFavorite()
+        } else {
+            markAsFavorite()
         }
     }
 
@@ -197,6 +195,7 @@ class AssetDetailsActivity : BaseActivity(), AssetDetailsView {
         val item = adapterAvatar.items[view_pager.currentItem]
         item.isFavorite = false
         AssetBalanceDb(item).save()
+        AssetBalanceStore(item.assetId, item.isHidden, item.position, item.isFavorite).save()
         image_favorite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_toolbar_favorite_off))
     }
 
@@ -205,6 +204,7 @@ class AssetDetailsActivity : BaseActivity(), AssetDetailsView {
         item.isFavorite = true
         item.isHidden = false
         AssetBalanceDb(item).save()
+        AssetBalanceStore(item.assetId, item.isHidden, item.position, item.isFavorite).save()
         image_favorite.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_toolbar_favorite_on))
     }
 

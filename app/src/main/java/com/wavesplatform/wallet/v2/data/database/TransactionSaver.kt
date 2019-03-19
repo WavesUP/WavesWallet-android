@@ -1,21 +1,22 @@
 package com.wavesplatform.wallet.v2.data.database
 
 import com.vicpin.krealmextensions.*
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.net.model.response.AssetInfo
+import com.wavesplatform.sdk.net.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.TransactionType
 import com.wavesplatform.sdk.utils.TransactionUtil
-import com.wavesplatform.wallet.v2.data.Constants
+import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.sdk.utils.transactionType
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.manager.ApiDataManager
 import com.wavesplatform.wallet.v2.data.manager.NodeDataManager
-import com.wavesplatform.wallet.v2.data.model.local.LeasingStatus
-import com.wavesplatform.sdk.model.response.AssetInfo
-import com.wavesplatform.sdk.model.response.Transaction
-import com.wavesplatform.sdk.model.response.TransactionType
-import com.wavesplatform.sdk.utils.notNull
-import com.wavesplatform.sdk.utils.transactionType
 import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
 import com.wavesplatform.wallet.v2.data.model.db.TransactionDb
 import com.wavesplatform.wallet.v2.data.model.db.TransferDb
-import com.wavesplatform.wallet.v2.util.*
+import com.wavesplatform.wallet.v2.data.model.local.LeasingStatus
+import com.wavesplatform.wallet.v2.util.RxEventBus
+import com.wavesplatform.sdk.utils.RxUtil
 import io.reactivex.disposables.CompositeDisposable
 import pyxis.uzuki.live.richutilskt.utils.runAsync
 import pyxis.uzuki.live.richutilskt.utils.runOnUiThread
@@ -36,9 +37,11 @@ class TransactionSaver @Inject constructor() {
     private var prevLimit = DEFAULT_LIMIT
     private var needCheckToUpdateBalance = false
 
-
-    fun saveTransactions(sortedList: List<Transaction>, limit: Int = DEFAULT_LIMIT,
-                         changeListener: OnTransactionLimitChangeListener? = null) {
+    fun saveTransactions(
+            sortedList: List<Transaction>,
+            limit: Int = DEFAULT_LIMIT,
+            changeListener: OnTransactionLimitChangeListener? = null
+    ) {
         currentLimit = limit
         if (sortedList.isEmpty() || limit < 1) {
             rxEventBus.post(Events.NeedUpdateHistoryScreen())
@@ -76,7 +79,6 @@ class TransactionSaver @Inject constructor() {
                             changeListener.notNull { listener ->
                                 listener.onChange(currentLimit)
                             }
-
                         } else {
                             // check if exist first transaction
                             queryAsync<TransactionDb>({ equalTo("id", sortedList[0].id) },
@@ -121,13 +123,13 @@ class TransactionSaver @Inject constructor() {
                     mergeAndSaveAllAssets(ArrayList(it)) { assetsInfo ->
                         transactions.forEach { trans ->
                             if (trans.assetId.isNullOrEmpty()) {
-                                trans.asset = Constants.wavesAssetInfo
+                                trans.asset = Constants.WAVES_ASSET_INFO
                             } else {
                                 trans.asset = allAssets.firstOrNull { it.id == trans.assetId }
                             }
 
                             if (trans.feeAssetId.isNullOrEmpty()) {
-                                trans.feeAssetObject = Constants.wavesAssetInfo
+                                trans.feeAssetObject = Constants.WAVES_ASSET_INFO
                             } else {
                                 trans.feeAssetObject = allAssets.firstOrNull { it.id == trans.feeAssetId }
                             }
@@ -166,17 +168,16 @@ class TransactionSaver @Inject constructor() {
                             if (trans.order1 != null) {
                                 val amountAsset =
                                         if (trans.order1?.assetPair?.amountAsset.isNullOrEmpty()) {
-                                            Constants.wavesAssetInfo
+                                            Constants.WAVES_ASSET_INFO
                                         } else {
                                             allAssets.firstOrNull { it.id == trans.order1?.assetPair?.amountAsset }
                                         }
                                 val priceAsset =
                                         if (trans.order1?.assetPair?.priceAsset.isNullOrEmpty()) {
-                                            Constants.wavesAssetInfo
+                                            Constants.WAVES_ASSET_INFO
                                         } else {
                                             allAssets.firstOrNull { it.id == trans.order1?.assetPair?.priceAsset }
                                         }
-
 
                                 trans.order1?.assetPair?.amountAssetObject = amountAsset
                                 trans.order1?.assetPair?.priceAssetObject = priceAsset
@@ -219,17 +220,16 @@ class TransactionSaver @Inject constructor() {
                         }
                     }
                 })
-
     }
 
     private fun mergeAndSaveAllAssets(arrayList: ArrayList<AssetInfo>, callback: (ArrayList<AssetInfo>) -> Unit) {
         runAsync {
             queryAllAsync<SpamAssetDb> { spams ->
-                arrayList.forEach { newAsset ->
-                    if (!allAssets.any { it.id == newAsset.id }) {
-                        if (spams.any { it.assetId == newAsset.id }) {
-                            newAsset.isSpam = true
-                        }
+                val spamMap = spams.associateBy { it.assetId }
+                val allAssetMap = allAssets.associateBy { it.id }
+                arrayList.iterator().forEach { newAsset ->
+                    if (allAssetMap[newAsset.id] == null) {
+                        newAsset.isSpam = spamMap[newAsset.id] != null
                         allAssets.add(newAsset)
                     }
                 }

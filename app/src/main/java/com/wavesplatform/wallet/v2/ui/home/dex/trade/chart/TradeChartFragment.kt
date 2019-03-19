@@ -12,16 +12,19 @@ import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.*
+import com.github.mikephil.charting.jobs.MoveViewJob
+import com.github.mikephil.charting.jobs.ZoomJob
 import com.github.mikephil.charting.listener.BarLineChartTouchListener
 import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
 import com.github.mikephil.charting.utils.EntryXComparator
-import com.wavesplatform.sdk.model.OrderType
+import com.wavesplatform.sdk.net.model.OrderType
 import com.wavesplatform.wallet.R
+import com.github.mikephil.charting.utils.ObjectPool
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.model.local.ChartTimeFrame
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.response.LastTradesResponse
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.response.LastTradesResponse
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.custom.CandleTouchListener
 import com.wavesplatform.wallet.v2.ui.custom.OnCandleGestureListener
@@ -41,7 +44,6 @@ import pyxis.uzuki.live.richutilskt.utils.runOnUiThread
 import java.util.*
 import javax.inject.Inject
 
-
 class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListener {
 
     @Inject
@@ -53,8 +55,7 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
     @ProvidePresenter
     fun providePresenter(): TradeChartPresenter = presenter
 
-    override fun configLayoutRes() = R.layout.fragment_trade_chart
-
+    override fun configLayoutRes() = com.wavesplatform.wallet.R.layout.fragment_trade_chart
 
     override fun onViewReady(savedInstanceState: Bundle?) {
         presenter.watchMarket = arguments?.getParcelable<WatchMarket>(TradeActivity.BUNDLE_MARKET)
@@ -70,7 +71,7 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
             presenter.currentTimeFrame = it.timeServer
         }
 
-        text_empty.text = getString(R.string.chart_empty)
+        text_empty.text = getString(com.wavesplatform.wallet.R.string.chart_empty)
 
         text_change_time.click {
             showTimeFrameDialog()
@@ -99,19 +100,19 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
 
     private fun showTimeFrameDialog() {
         val alt_bld = AlertDialog.Builder(baseActivity)
-        alt_bld.setTitle(getString(R.string.chart_change_interval_dialog_title))
+        alt_bld.setTitle(getString(com.wavesplatform.wallet.R.string.chart_change_interval_dialog_title))
         alt_bld.setSingleChoiceItems(presenter.timeFrameList.map { getString(it.timeUI) }.toTypedArray(),
                 presenter.selectedTimeFrame) { dialog, item ->
             if (presenter.selectedTimeFrame == item) {
-                buttonPositive?.setTextColor(findColor(R.color.basic300))
+                buttonPositive?.setTextColor(findColor(com.wavesplatform.wallet.R.color.basic300))
                 buttonPositive?.isClickable = false
             } else {
-                buttonPositive?.setTextColor(findColor(R.color.submit400))
+                buttonPositive?.setTextColor(findColor(com.wavesplatform.wallet.R.color.submit400))
                 buttonPositive?.isClickable = true
             }
             presenter.newSelectedTimeFrame = item
         }
-        alt_bld.setPositiveButton(getString(R.string.chart_change_interval_dialog_ok)) { dialog, which ->
+        alt_bld.setPositiveButton(getString(com.wavesplatform.wallet.R.string.chart_change_interval_dialog_ok)) { dialog, which ->
             dialog.dismiss()
             presenter.selectedTimeFrame = presenter.newSelectedTimeFrame
 
@@ -126,13 +127,13 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
 
             rxEventBus.post(Events.UpdateMarketAfterChangeChartTimeFrame(presenter.watchMarket?.market?.id, presenter.timeFrameList[presenter.selectedTimeFrame].timeServer))
         }
-        alt_bld.setNegativeButton(getString(R.string.chart_change_interval_dialog_cancel)) { dialog, which -> dialog.dismiss() }
+        alt_bld.setNegativeButton(getString(com.wavesplatform.wallet.R.string.chart_change_interval_dialog_cancel)) { dialog, which -> dialog.dismiss() }
         val alert = alt_bld.create()
         alert.show()
         alert.makeStyled()
 
         buttonPositive = alert?.findViewById<Button>(android.R.id.button1)
-        buttonPositive?.setTextColor(findColor(R.color.basic300))
+        buttonPositive?.setTextColor(findColor(com.wavesplatform.wallet.R.color.basic300))
         buttonPositive?.isClickable = false
     }
 
@@ -207,9 +208,7 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
         bar_chart.xAxis.setDrawAxisLine(false)
         bar_chart.xAxis.isGranularityEnabled = true
         bar_chart.xAxis.labelCount = 3
-
     }
-
 
     private fun checkInterval() {
         val dataSetByIndex = candle_chart.candleData.getDataSetByIndex(0)
@@ -239,8 +238,8 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
     }
 
     override fun onPause() {
-        super.onPause()
         presenter.pause()
+        super.onPause()
     }
 
     override fun onResume() {
@@ -248,13 +247,11 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
         presenter.resume()
     }
 
-
     inner class BarChartListener : OnChartGestureListener {
 
         private var prevScaleX = 0f
 
         override fun onChartGestureStart(me: MotionEvent, lastPerformedGesture: ChartTouchListener.ChartGesture) {
-
         }
 
         override fun onChartGestureEnd(me: MotionEvent, lastPerformedGesture: ChartTouchListener.ChartGesture) {
@@ -262,19 +259,15 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
         }
 
         override fun onChartLongPressed(me: MotionEvent) {
-
         }
 
         override fun onChartDoubleTapped(me: MotionEvent) {
-
         }
 
         override fun onChartSingleTapped(me: MotionEvent) {
-
         }
 
         override fun onChartFling(me1: MotionEvent, me2: MotionEvent, velocityX: Float, velocityY: Float) {
-
         }
 
         override fun onChartScale(me: MotionEvent, scaleX: Float, scaleY: Float) {
@@ -304,17 +297,15 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
     }
 
     override fun onChartLongPressed(me: MotionEvent) {
-
     }
 
     override fun onChartDoubleTapped(me: MotionEvent) {
-        //checkInterval();
+        // checkInterval();
     }
 
     override fun onChartSingleTapped(me: MotionEvent) {}
 
     override fun onChartFling(me1: MotionEvent, me2: MotionEvent, velocityX: Float, velocityY: Float) {
-
     }
 
     private var prevScaleX = 0f
@@ -326,7 +317,6 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
         bar_chart.zoom(z1, 1f, xPos, yPos)
         prevScaleX = scaleX
     }
-
 
     override fun onChartTranslate(me: MotionEvent, dX: Float, dY: Float) {
         bar_chart.moveViewToX(candle_chart.lowestVisibleX)
@@ -346,7 +336,6 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
             candle_chart.axisRight.addLimitLine(limitLine)
             candle_chart.axisRight.setDrawLimitLinesBehindData(false)
             candle_chart.invalidate()
-
         }
     }
 
@@ -370,8 +359,8 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
 
                 val candleData = CandleData()
                 val set = CandleDataSet(candles, "Candle DataSet")
-                set.decreasingColor = findColor(R.color.error400)
-                set.increasingColor = findColor(R.color.submit300)
+                set.decreasingColor = findColor(com.wavesplatform.wallet.R.color.error400)
+                set.increasingColor = findColor(com.wavesplatform.wallet.R.color.submit300)
                 set.neutralColor = Color.parseColor("#4b7190")
                 set.shadowColorSameAsCandle = true
                 set.increasingPaintStyle = Paint.Style.FILL
@@ -408,7 +397,6 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
                 }
             }
         }
-
     }
 
     private fun updateCandles(candles: List<CandleEntry>, barEntries: List<BarEntry>) {
@@ -456,7 +444,6 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
             isLoading = false
         }
     }
-
 
     override fun onRefreshCandles(candles: ArrayList<CandleEntry>, barEntries: ArrayList<BarEntry>) {
         if (candles.isEmpty() || barEntries.isEmpty())
@@ -513,9 +500,23 @@ class TradeChartFragment : BaseFragment(), TradeChartView, OnCandleGestureListen
     }
 
     override fun onDestroyView() {
+        fixChartMemoryLeaks()
+
         bar_chart.onDestroy()
         candle_chart.onDestroy()
         super.onDestroyView()
+    }
+
+    private fun fixChartMemoryLeaks() {
+        // Fix https://github.com/PhilJay/MPAndroidChart/issues/2238
+        val moveViewJobPoll = MoveViewJob::class.java.getDeclaredField("pool")
+        moveViewJobPoll.isAccessible = true
+        moveViewJobPoll.set(null, ObjectPool.create(2, MoveViewJob(null, 0f, 0f, null, null)))
+
+        // the same issue with ZoomJob
+        val zoomViewJobPoll = ZoomJob::class.java.getDeclaredField("pool")
+        zoomViewJobPoll.isAccessible = true
+        zoomViewJobPoll.set(null, ObjectPool.create(2, ZoomJob(null, 0f, 0f, 0f, 0f, null, null, null)))
     }
 
     companion object {

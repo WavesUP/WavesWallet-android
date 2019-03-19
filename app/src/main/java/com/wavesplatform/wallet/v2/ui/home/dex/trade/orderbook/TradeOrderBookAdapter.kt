@@ -3,16 +3,15 @@ package com.wavesplatform.wallet.v2.ui.home.dex.trade.orderbook
 import com.chad.library.adapter.base.BaseMultiItemQuickAdapter
 import com.chad.library.adapter.base.BaseViewHolder
 import com.chad.library.adapter.base.entity.MultiItemEntity
-import com.wavesplatform.sdk.model.OrderType
+import com.wavesplatform.sdk.net.model.OrderType
 import com.wavesplatform.wallet.R
 import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.model.local.LastPriceItem
-import com.wavesplatform.sdk.model.response.MarketResponse
-import com.wavesplatform.sdk.model.response.OrderBook
+import com.wavesplatform.sdk.net.model.response.MarketResponse
+import com.wavesplatform.sdk.net.model.response.OrderBook
 import com.wavesplatform.sdk.utils.stripZeros
 import pers.victor.ext.findColor
 import javax.inject.Inject
-
 
 class TradeOrderBookAdapter @Inject constructor() : BaseMultiItemQuickAdapter<MultiItemEntity, BaseViewHolder>(null) {
     var market: MarketResponse = MarketResponse()
@@ -46,7 +45,6 @@ class TradeOrderBookAdapter @Inject constructor() : BaseMultiItemQuickAdapter<Mu
                         .setText(R.id.text_amount_value, amountUIValue)
                         .setText(R.id.text_price_value, priceUIValue)
                         .setText(R.id.text_sum_value, MoneyUtil.getFormattedTotal(item.sum, market.priceAssetDecimals))
-
             }
             BID_TYPE -> {
                 val item = item as OrderBook.Bid

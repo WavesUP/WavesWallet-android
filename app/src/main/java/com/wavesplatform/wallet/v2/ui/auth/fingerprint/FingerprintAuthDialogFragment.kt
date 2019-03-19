@@ -1,6 +1,5 @@
 package com.wavesplatform.wallet.v2.ui.auth.fingerprint
 
-
 import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
@@ -13,9 +12,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import com.wavesplatform.sdk.utils.RootUtil
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v2.util.RootUtil
 import com.wavesplatform.wallet.v2.ui.auth.passcode.enter.EnterPassCodeActivity
 import com.wavesplatform.sdk.utils.notNull
 import com.wei.android.lib.fingerprintidentify.FingerprintIdentify
@@ -28,7 +27,6 @@ import kotlinx.android.synthetic.main.fingerprint_dialog.view.*
 import pers.victor.ext.click
 import pers.victor.ext.findColor
 import timber.log.Timber
-
 
 class FingerprintAuthDialogFragment : DialogFragment() {
 
@@ -51,8 +49,11 @@ class FingerprintAuthDialogFragment : DialogFragment() {
         dialog.window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         val view = inflater.inflate(R.layout.fingerprint_dialog, container, false)
         view.text_cancel.click { cancelDialog() }
         mode = arguments?.getInt(KEY_INTENT_MODE, ENCRYPT)
@@ -102,8 +103,8 @@ class FingerprintAuthDialogFragment : DialogFragment() {
                 fingerprintIdentify.cancelIdentify()
                 onFingerprintDoNotMatchTryAgain()
                 handler.postDelayed({
-                    if (fingerprintState == FingerprintState.NOT_RECOGNIZED
-                            || fingerprintState == FingerprintState.DEFAULT) {
+                    if (fingerprintState == FingerprintState.NOT_RECOGNIZED ||
+                            fingerprintState == FingerprintState.DEFAULT) {
                         onDefaultState()
                         fingerprintIdentify.resumeIdentify()
                     }
@@ -176,9 +177,9 @@ class FingerprintAuthDialogFragment : DialogFragment() {
     private fun onSuccessRecognizedFingerprint() {
         fingerprintState = FingerprintState.SUCCESS
 
-        image_fingerprint_state.setImageResource(R.drawable.ic_fingerprint_recognized_48_submit_300)
-        text_fingerprint_state.setTextColor(findColor(R.color.black))
-        text_fingerprint_state.setText(R.string.fingerprint_dialog_recognized)
+        image_fingerprint_state?.setImageResource(R.drawable.ic_fingerprint_recognized_48_submit_300)
+        text_fingerprint_state?.setTextColor(findColor(R.color.black))
+        text_fingerprint_state?.setText(R.string.fingerprint_dialog_recognized)
     }
 
     private fun onDefaultState() {
@@ -192,9 +193,9 @@ class FingerprintAuthDialogFragment : DialogFragment() {
     private fun onFingerprintLocked() {
         fingerprintState = FingerprintState.LOCKED
 
-        image_fingerprint_state.setImageResource(R.drawable.ic_fingerprint_lock_48_submit_300)
-        text_fingerprint_state.setTextColor(findColor(R.color.error500))
-        text_fingerprint_state.setText(R.string.fingerprint_dialog_too_many_attempts)
+        image_fingerprint_state?.setImageResource(R.drawable.ic_fingerprint_lock_48_submit_300)
+        text_fingerprint_state?.setTextColor(findColor(R.color.error500))
+        text_fingerprint_state?.setText(R.string.fingerprint_dialog_too_many_attempts)
         fingerPrintDialogListener.notNull {
             it.onFingerprintLocked(getString(R.string.fingerprint_dialog_too_many_attempts))
         }
@@ -203,11 +204,10 @@ class FingerprintAuthDialogFragment : DialogFragment() {
     private fun onFingerprintDoNotMatchTryAgain() {
         fingerprintState = FingerprintState.NOT_RECOGNIZED
 
-        image_fingerprint_state.setImageResource(R.drawable.ic_fingerprint_sensor_48_submit_300)
-        text_fingerprint_state.setTextColor(findColor(R.color.error500))
-        text_fingerprint_state.setText(R.string.fingerprint_dialog_not_recognized)
+        image_fingerprint_state?.setImageResource(R.drawable.ic_fingerprint_sensor_48_submit_300)
+        text_fingerprint_state?.setTextColor(findColor(R.color.error500))
+        text_fingerprint_state?.setText(R.string.fingerprint_dialog_not_recognized)
     }
-
 
     fun setFingerPrintDialogListener(fingerPrintDialogListener: FingerPrintDialogListener) {
         this.fingerPrintDialogListener = fingerPrintDialogListener
@@ -223,26 +223,20 @@ class FingerprintAuthDialogFragment : DialogFragment() {
         }
 
         fun onSuccessRecognizedFingerprint() {
-
         }
 
         fun onSuccessRecognizedFingerprint(passCode: String) {
-
         }
 
         fun onFingerprintLocked(message: String) {
-
         }
 
         fun onShowErrorMessage(message: String) {
-
         }
 
         fun onShowMessage(message: String) {
-
         }
     }
-
 
     companion object {
         const val AVAILABLE_TIMES = 5
@@ -275,7 +269,7 @@ class FingerprintAuthDialogFragment : DialogFragment() {
 
         fun isAvailable(context: Context): Boolean {
             val mFingerprintIdentify = FingerprintIdentify(context)
-            return !RootUtil.isDeviceRooted() && mFingerprintIdentify.isFingerprintEnable
+            return !RootUtil.isDeviceRooted && mFingerprintIdentify.isFingerprintEnable
         }
     }
 }

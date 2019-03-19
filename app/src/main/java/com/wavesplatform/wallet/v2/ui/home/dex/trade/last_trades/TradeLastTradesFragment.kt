@@ -8,8 +8,8 @@ import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.wavesplatform.wallet.R
 import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.Events
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.response.LastTradesResponse
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.response.LastTradesResponse
 import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.sdk.utils.stripZeros
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
@@ -22,7 +22,6 @@ import pers.victor.ext.gone
 import pers.victor.ext.inflate
 import pers.victor.ext.visiable
 import javax.inject.Inject
-
 
 class TradeLastTradesFragment : BaseFragment(), TradeLastTradesView {
 
@@ -43,7 +42,6 @@ class TradeLastTradesFragment : BaseFragment(), TradeLastTradesView {
             return fragment
         }
     }
-
 
     @ProvidePresenter
     fun providePresenter(): TradeLastTradesPresenter = presenter
@@ -108,7 +106,6 @@ class TradeLastTradesFragment : BaseFragment(), TradeLastTradesView {
         view.text_empty.text = getString(R.string.last_trades_empty)
         return view
     }
-
 
     override fun afterSuccessLoadLastTrades(data: List<LastTradesResponse.Data.ExchangeTransaction>) {
         progress_bar.hide()

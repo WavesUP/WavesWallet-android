@@ -48,11 +48,11 @@ import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
+import com.wavesplatform.sdk.utils.RxUtil
 import kotlinx.android.synthetic.main.no_internet_bottom_message_layout.view.*
 import org.fingerlinks.mobile.android.navigator.Navigator
 import pers.victor.ext.click
 import pyxis.uzuki.live.richutilskt.utils.hideKeyboard
-import pyxis.uzuki.live.richutilskt.utils.inflate
 import timber.log.Timber
 import java.util.*
 import javax.inject.Inject
@@ -74,7 +74,6 @@ abstract class BaseActivity : MvpAppCompatActivity(), BaseView, BaseMvpView, Has
     lateinit var supportFragmentInjector: DispatchingAndroidInjector<Fragment>
     @Inject
     lateinit var frameworkFragmentInjector: DispatchingAndroidInjector<android.app.Fragment>
-
 
     @Inject
     lateinit var mRxEventBus: RxEventBus
@@ -105,7 +104,6 @@ abstract class BaseActivity : MvpAppCompatActivity(), BaseView, BaseMvpView, Has
         super.attachBaseContext(localizationDelegate.attachBaseContext(newBase))
     }
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         AndroidInjection.inject(this)
         localizationDelegate.addOnLocaleChangedListener(this)
@@ -121,7 +119,7 @@ abstract class BaseActivity : MvpAppCompatActivity(), BaseView, BaseMvpView, Has
         Timber.tag(javaClass.simpleName)
         onViewReady(savedInstanceState)
 
-        noInternetLayout = inflate(R.layout.no_internet_bottom_message_layout)
+        noInternetLayout = layoutInflater.inflate(R.layout.no_internet_bottom_message_layout, null)
 
         eventSubscriptions.add(ReactiveNetwork
                 .observeInternetConnectivity()
@@ -212,16 +210,19 @@ abstract class BaseActivity : MvpAppCompatActivity(), BaseView, BaseMvpView, Has
     }
 
     @JvmOverloads
-    inline fun setupToolbar(toolbar: Toolbar, homeEnable: Boolean = false,
-                            title: String = "", @DrawableRes icon: Int = R.drawable.ic_arrow_back_white_24dp,
-                            crossinline onClickListener: () -> Unit = { onBackPressed() }) {
+    inline fun setupToolbar(
+            toolbar: Toolbar,
+            homeEnable: Boolean = false,
+            title: String = "",
+            @DrawableRes icon: Int = R.drawable.ic_arrow_back_white_24dp,
+            crossinline onClickListener: () -> Unit = { onBackPressed() }
+    ) {
         this.toolbar = toolbar
         setSupportActionBar(toolbar)
         mActionBar = supportActionBar
 
         mActionBar?.setHomeButtonEnabled(homeEnable)
         mActionBar?.setDisplayHomeAsUpEnabled(homeEnable)
-
 
         mActionBar?.setHomeAsUpIndicator(AppCompatResources.getDrawable(this, icon))
 

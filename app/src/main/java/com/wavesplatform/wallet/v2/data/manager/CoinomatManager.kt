@@ -1,10 +1,10 @@
 package com.wavesplatform.wallet.v2.data.manager
 
 import com.wavesplatform.wallet.v2.data.manager.base.BaseDataManager
-import com.wavesplatform.sdk.model.response.coinomat.CreateTunnel
-import com.wavesplatform.sdk.model.response.coinomat.GetTunnel
-import com.wavesplatform.sdk.model.response.coinomat.Limit
-import com.wavesplatform.sdk.model.response.coinomat.XRate
+import com.wavesplatform.sdk.net.model.response.coinomat.CreateTunnel
+import com.wavesplatform.sdk.net.model.response.coinomat.GetTunnel
+import com.wavesplatform.sdk.net.model.response.coinomat.Limit
+import com.wavesplatform.sdk.net.model.response.coinomat.XRate
 import io.reactivex.Observable
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,8 +20,12 @@ class CoinomatManager @Inject constructor() : BaseDataManager() {
         return coinomatService.limits(crypto, address, fiat)
     }
 
-    fun createTunnel(currencyFrom: String?, currencyTo: String?, address: String?,
-                     moneroPaymentId: String?): Observable<CreateTunnel> {
+    fun createTunnel(
+        currencyFrom: String?,
+        currencyTo: String?,
+        address: String?,
+        moneroPaymentId: String?
+    ): Observable<CreateTunnel> {
         return coinomatService.createTunnel(currencyFrom, currencyTo, address, moneroPaymentId)
     }
 

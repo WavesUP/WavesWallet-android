@@ -1,8 +1,8 @@
 package com.wavesplatform.wallet.v2.ui.language
 
 import com.arellomobile.mvp.InjectViewState
-import com.wavesplatform.wallet.v2.data.model.local.Language
-import com.wavesplatform.wallet.v2.data.model.local.LanguageItem
+import com.wavesplatform.sdk.net.model.Language
+import com.wavesplatform.sdk.net.model.LanguageItem
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import javax.inject.Inject
 
@@ -17,5 +17,4 @@ class LanguagePresenter @Inject constructor() : BasePresenter<LanguageView>() {
     fun saveLanguage(lang: String) {
         preferenceHelper.setLanguage(lang)
     }
-
 }

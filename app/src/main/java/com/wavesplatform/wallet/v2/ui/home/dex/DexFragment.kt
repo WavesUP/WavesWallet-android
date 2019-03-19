@@ -11,11 +11,12 @@ import android.view.View
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.chad.library.adapter.base.BaseQuickAdapter
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
-import com.wavesplatform.sdk.model.WatchMarket
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.home.MainActivity
 import com.wavesplatform.wallet.v2.ui.home.dex.markets.DexMarketsActivity
@@ -23,7 +24,6 @@ import com.wavesplatform.wallet.v2.ui.home.dex.sorting.ActiveMarketsSortingActiv
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.TradeActivity
 import com.wavesplatform.wallet.v2.util.currentDateAsTimeSpanString
 import com.wavesplatform.wallet.v2.util.launchActivity
-import com.wavesplatform.sdk.utils.notNull
 import kotlinx.android.synthetic.main.empty_dex_layout.view.*
 import kotlinx.android.synthetic.main.fragment_dex_new.*
 import kotlinx.android.synthetic.main.header_dex_layout.view.*
@@ -32,7 +32,6 @@ import pers.victor.ext.inflate
 import pers.victor.ext.isNetworkConnected
 import java.util.*
 import javax.inject.Inject
-
 
 class DexFragment : BaseFragment(), DexView {
 
@@ -47,7 +46,6 @@ class DexFragment : BaseFragment(), DexView {
     lateinit var adapter: DexAdapter
     var menu: Menu? = null
     private var onElevationAppBarChangeListener: MainActivity.OnElevationAppBarChangeListener? = null
-
 
     override fun configLayoutRes(): Int = R.layout.fragment_dex_new
 
@@ -152,7 +150,6 @@ class DexFragment : BaseFragment(), DexView {
             }
         }
     }
-
 
     override fun afterSuccessLoadPairInfo(watchMarket: WatchMarket, index: Int) {
         adapter.headerLayout?.text_last_update?.text = presenter.prefsUtil

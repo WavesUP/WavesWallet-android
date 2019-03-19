@@ -2,11 +2,11 @@ package com.wavesplatform.wallet.v2.ui.home.wallet.your_assets
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryAsSingle
+import com.wavesplatform.sdk.utils.Constants
 import com.wavesplatform.wallet.v2.util.PrefsUtil
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.BiFunction
@@ -69,11 +69,11 @@ class YourAssetsPresenter @Inject constructor() : BasePresenter<YourAssetsView>(
             val singleData: Single<List<AssetBalanceDb>> = if (this.greaterZeroBalance) {
                 queryAsSingle {
                     greaterThan("balance", 0)
-                            .`in`("assetId", Constants.defaultCrypto)
+                            .`in`("assetId", Constants.defaultCrypto())
                 }
             } else {
                 queryAsSingle {
-                    `in`("assetId", Constants.defaultCrypto)
+                    `in`("assetId", Constants.defaultCrypto())
                 }
             }
 
@@ -90,7 +90,6 @@ class YourAssetsPresenter @Inject constructor() : BasePresenter<YourAssetsView>(
                             viewState.showAssets(AssetBalanceDb.convertFromDb(assets))
                         }
                     }, {
-
                     }))
         }
     }

@@ -9,21 +9,23 @@ import android.view.View
 import com.chad.library.adapter.base.BaseMultiItemQuickAdapter
 import com.chad.library.adapter.base.BaseViewHolder
 import com.oushangfeng.pinnedsectionitemdecoration.utils.FullSpanUtil
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.net.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.TransactionType
+import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.util.PrefsUtil
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.sdk.model.response.Transaction
-import com.wavesplatform.sdk.model.response.TransactionType
-import com.wavesplatform.sdk.utils.*
-import com.wavesplatform.wallet.v2.util.*
+import com.wavesplatform.wallet.v2.util.icon
+import com.wavesplatform.wallet.v2.util.isSpamConsidered
+import com.wavesplatform.wallet.v2.util.makeTextHalfBold
+import com.wavesplatform.wallet.v2.util.setMargins
 import kotlinx.android.synthetic.main.recycle_item_history.view.*
 import pers.victor.ext.dp2px
 import pers.victor.ext.gone
 import pers.victor.ext.visiable
 import javax.inject.Inject
-
 
 class HistoryTabItemAdapter @Inject constructor() :
         BaseMultiItemQuickAdapter<HistoryItem, BaseViewHolder>(null) {
@@ -36,7 +38,6 @@ class HistoryTabItemAdapter @Inject constructor() :
         addItemType(HistoryItem.TYPE_DATA, R.layout.recycle_item_history)
         addItemType(HistoryItem.TYPE_EMPTY, R.layout.layout_history_tab_header_space)
     }
-
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
@@ -90,6 +91,13 @@ class HistoryTabItemAdapter @Inject constructor() :
                                             "+${getScaledAmount(it, decimals)}"
                                 }
                             }
+                            TransactionType.RECEIVE_SPONSORSHIP_TYPE -> {
+                                item.data.fee.notNull {
+                                    view.text_transaction_value.text =
+                                            "+${getScaledAmount(it, item.data.feeAssetObject?.precision
+                                                    ?: 8)} ${item.data.feeAssetObject?.name}"
+                                }
+                            }
                             TransactionType.MASS_SPAM_RECEIVE_TYPE,
                             TransactionType.MASS_RECEIVE_TYPE,
                             TransactionType.MASS_SEND_TYPE -> {
@@ -122,14 +130,16 @@ class HistoryTabItemAdapter @Inject constructor() :
                             TransactionType.DATA_TYPE,
                             TransactionType.SET_ADDRESS_SCRIPT_TYPE,
                             TransactionType.CANCEL_ADDRESS_SCRIPT_TYPE,
-                            TransactionType.SET_SPONSORSHIP_TYPE,
-                            TransactionType.CANCEL_SPONSORSHIP_TYPE,
                             TransactionType.UPDATE_ASSET_SCRIPT_TYPE -> {
                                 view.text_transaction_name.text =
                                         mContext.getString(R.string.history_data_type_title)
                                 view.text_transaction_value.text = mContext.getString(
                                         item.data.transactionType().title)
                                 view.text_transaction_value.setTypeface(null, Typeface.BOLD)
+                            }
+                            TransactionType.SET_SPONSORSHIP_TYPE,
+                            TransactionType.CANCEL_SPONSORSHIP_TYPE -> {
+                                view.text_transaction_value.text = item.data.asset?.name
                             }
                             else -> {
                                 item.data.amount.notNull {
@@ -155,6 +165,7 @@ class HistoryTabItemAdapter @Inject constructor() :
                             }
                         }
                     }
+
                     view.text_transaction_value.makeTextHalfBold()
                     view.text_transaction_value.post {
                         TextViewCompat
@@ -196,8 +207,8 @@ class HistoryTabItemAdapter @Inject constructor() :
                 amountAsset.name,
                 secondOrder.assetPair?.priceAssetObject?.name)
 
-        val amountAssetTicker = if (amountAsset.name == "WAVES") {
-            "WAVES"
+        val amountAssetTicker = if (amountAsset.name == Constants.WAVES_ASSET_ID_FILLED) {
+            Constants.WAVES_ASSET_ID_FILLED
         } else {
             amountAsset.ticker
         }

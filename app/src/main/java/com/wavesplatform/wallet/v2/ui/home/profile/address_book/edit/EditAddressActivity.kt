@@ -1,19 +1,21 @@
 package com.wavesplatform.wallet.v2.ui.home.profile.address_book.edit
 
-
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.support.v7.app.AlertDialog
+import android.view.inputmethod.EditorInfo
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.google.zxing.integration.android.IntentIntegrator
 import com.mindorks.editdrawabletext.DrawablePosition
 import com.mindorks.editdrawabletext.OnDrawableClickListener
 import com.wavesplatform.sdk.utils.WAVES_PREFIX
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.Constants
+import com.wavesplatform.wallet.v2.data.model.userdb.AddressBookUser
 import com.wavesplatform.wallet.v2.data.rules.AddressBookAddressRule
 import com.wavesplatform.wallet.v2.data.rules.AddressBookNameRule
 import com.wavesplatform.wallet.v2.data.rules.MinTrimRule
@@ -23,9 +25,8 @@ import com.wavesplatform.wallet.v2.ui.auth.qr_scanner.QrCodeScannerActivity
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookActivity
 import com.wavesplatform.wallet.v2.ui.home.profile.address_book.AddressBookActivity.Companion.BUNDLE_POSITION
-import com.wavesplatform.wallet.v2.data.model.db.AddressBookUserDb
 import com.wavesplatform.wallet.v2.util.makeStyled
-import com.wavesplatform.sdk.utils.notNull
+import com.wavesplatform.wallet.v2.util.onAction
 import io.github.anderscheow.validator.Validation
 import io.github.anderscheow.validator.Validator
 import io.github.anderscheow.validator.constant.Mode
@@ -33,8 +34,8 @@ import io.github.anderscheow.validator.rules.common.MaxRule
 import kotlinx.android.synthetic.main.activity_edit_address.*
 import pers.victor.ext.addTextChangedListener
 import pers.victor.ext.click
+import pyxis.uzuki.live.richutilskt.utils.hideKeyboard
 import javax.inject.Inject
-
 
 class EditAddressActivity : BaseActivity(), EditAddressView {
 
@@ -64,7 +65,7 @@ class EditAddressActivity : BaseActivity(), EditAddressView {
                 .and(NotEmptyTrimRule(R.string.address_book_name_validation_required_error))
                 .and(MinTrimRule(2, R.string.address_book_name_validation_min_length_error))
                 .and(MaxRule(24, R.string.address_book_name_validation_max_length_error))
-                .and(AddressBookNameRule(R.string.address_book_name_validation_already_use_error))
+                .and(AddressBookNameRule(prefsUtil, R.string.address_book_name_validation_already_use_error))
 
         edit_address.setDrawableClickListener(object : OnDrawableClickListener {
             override fun onClick(target: DrawablePosition) {
@@ -103,6 +104,11 @@ class EditAddressActivity : BaseActivity(), EditAddressView {
             }
         }
 
+        edit_name.onAction(EditorInfo.IME_ACTION_DONE) {
+            hideKeyboard()
+            presenter.editAddress(edit_address.text.toString(), edit_name.text.toString())
+        }
+
         if (edit_address.text.isEmpty()) edit_address.tag = R.drawable.ic_qrcode_24_basic_500
         else edit_address.tag = R.drawable.ic_deladdress_24_error_400
 
@@ -136,12 +142,14 @@ class EditAddressActivity : BaseActivity(), EditAddressView {
             edit_address.isFocusableInTouchMode = false
             edit_address.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
 
-            edit_address.setText(intent.getParcelableExtra<AddressBookUserDb>(AddressBookActivity.BUNDLE_ADDRESS_ITEM).address)
+            edit_address.setText(intent.getParcelableExtra<AddressBookUser>(
+                    AddressBookActivity.BUNDLE_ADDRESS_ITEM).address)
             presenter.addressFieldValid = edit_address.text.isNotEmpty()
         } else if (type == AddressBookActivity.SCREEN_TYPE_EDITABLE) {
             val addressValidation = Validation(til_address)
                     .and(NotEmptyTrimRule(R.string.address_book_address_validation_required_error))
-                    .and(AddressBookAddressRule(R.string.address_book_address_validation_already_use_error))
+                    .and(AddressBookAddressRule(prefsUtil,
+                            R.string.address_book_address_validation_already_use_error))
 
             edit_address.addTextChangedListener {
                 on { s, start, before, count ->
@@ -177,7 +185,7 @@ class EditAddressActivity : BaseActivity(), EditAddressView {
         button_save.isEnabled = presenter.isAllFieldsValid()
     }
 
-    override fun successEditAddress(addressBookUser: AddressBookUserDb?) {
+    override fun successEditAddress(addressBookUser: AddressBookUser?) {
         val newIntent = Intent()
         newIntent.putExtra(AddressBookActivity.BUNDLE_ADDRESS_ITEM, addressBookUser)
         newIntent.putExtra(AddressBookActivity.BUNDLE_POSITION, intent.getIntExtra(BUNDLE_POSITION, -1))
@@ -205,7 +213,6 @@ class EditAddressActivity : BaseActivity(), EditAddressView {
             }
         }
     }
-
 
     override fun onBackPressed() {
         finish()

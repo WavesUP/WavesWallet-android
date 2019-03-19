@@ -7,13 +7,13 @@ import com.google.zxing.WriterException
 import com.wavesplatform.wallet.v2.util.zxing.Contents
 import com.wavesplatform.wallet.v2.util.zxing.encode.QRCodeEncoder
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import io.reactivex.Observable
 import javax.inject.Inject
 
 @InjectViewState
-class ReceiveAddressViewPresenter @Inject constructor():BasePresenter<ReceiveAddressView>(){
-    fun generateQRCode(text: String, size: Int){
+class ReceiveAddressViewPresenter @Inject constructor() : BasePresenter<ReceiveAddressView>() {
+    fun generateQRCode(text: String, size: Int) {
         addSubscription(generateQrCodeObservable(text, size)
                 .compose(RxUtil.applyObservableDefaultSchedulers())
                 .subscribe {

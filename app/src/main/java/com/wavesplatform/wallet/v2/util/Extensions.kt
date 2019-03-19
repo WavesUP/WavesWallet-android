@@ -10,6 +10,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.support.annotation.ColorRes
 import android.support.annotation.IdRes
 import android.support.annotation.StringRes
@@ -36,16 +37,21 @@ import android.widget.ImageView
 import android.widget.TextView
 import com.novoda.simplechromecustomtabs.SimpleChromeCustomTabs
 import com.vicpin.krealmextensions.queryFirst
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.ErrorResponse
-import com.wavesplatform.sdk.model.response.TransactionType
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.ErrorResponse
+import com.wavesplatform.sdk.net.model.response.TransactionType
+import com.wavesplatform.sdk.utils.EnvironmentManager
 import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.exception.RetrofitException
+import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.data.model.db.SpamAssetDb
 import com.wavesplatform.wallet.v2.ui.home.wallet.assets.AssetsAdapter
+import okhttp3.ResponseBody
 import pers.victor.ext.*
+import pers.victor.ext.Ext.ctx
 import pyxis.uzuki.live.richutilskt.utils.asDateString
 import pyxis.uzuki.live.richutilskt.utils.runDelayed
 import java.io.File
@@ -57,8 +63,19 @@ val filterStartWithDot = InputFilter { source, start, end, dest, dstart, dend ->
     null
 }
 
+val filterEmptySpace = InputFilter { source, start, end, dest, dstart, dend ->
+    if (dest.isNullOrEmpty() && source.startsWith(" ")) {
+        return@InputFilter ""
+    }
+    null
+}
+
 fun EditText.applyFilterStartWithDot() {
     this.filters = arrayOf(filterStartWithDot)
+}
+
+fun EditText.applyFilterStartEmptySpace() {
+    this.filters = arrayOf(filterEmptySpace)
 }
 
 fun Context.isNetworkConnection(): Boolean {
@@ -94,6 +111,35 @@ fun Long.currentDateAsTimeSpanString(context: Context): String {
     return context.getString(R.string.dex_last_update_value, "$timeDayRelative, $timeHour")
 }
 
+/**
+ * @param action constant from EditorInfo
+ * @see android.view.inputmethod.EditorInfo
+ */
+fun EditText.onAction(action: Int, runAction: () -> Unit) {
+    this.setOnEditorActionListener { v, actionId, event ->
+        return@setOnEditorActionListener when (actionId) {
+            action -> {
+                runAction.invoke()
+                true
+            }
+            else -> false
+        }
+    }
+}
+
+fun <T1: Any, T2: Any, R: Any> safeLet(p1: T1?, p2: T2?, block: (T1, T2)->R?): R? {
+    return if (p1 != null && p2 != null) block(p1, p2) else null
+}
+fun <T1: Any, T2: Any, T3: Any, R: Any> safeLet(p1: T1?, p2: T2?, p3: T3?, block: (T1, T2, T3)->R?): R? {
+    return if (p1 != null && p2 != null && p3 != null) block(p1, p2, p3) else null
+}
+fun <T1: Any, T2: Any, T3: Any, T4: Any, R: Any> safeLet(p1: T1?, p2: T2?, p3: T3?, p4: T4?, block: (T1, T2, T3, T4)->R?): R? {
+    return if (p1 != null && p2 != null && p3 != null && p4 != null) block(p1, p2, p3, p4) else null
+}
+fun <T1: Any, T2: Any, T3: Any, T4: Any, T5: Any, R: Any> safeLet(p1: T1?, p2: T2?, p3: T3?, p4: T4?, p5: T5?, block: (T1, T2, T3, T4, T5)->R?): R? {
+    return if (p1 != null && p2 != null && p3 != null && p4 != null && p5 != null) block(p1, p2, p3, p4, p5) else null
+}
+
 fun View.makeBackgroundWithRippleEffect() {
     val typedArray = context.obtainStyledAttributes(intArrayOf(R.attr.selectableItemBackground))
     val backgroundResource = typedArray.getResourceId(0, 0)
@@ -120,7 +166,6 @@ fun deleteRecursive(fileOrDirectory: File) {
     fileOrDirectory.delete()
 }
 
-
 fun Activity.openUrlWithChromeTab(url: String) {
     SimpleChromeCustomTabs.getInstance()
             .withFallback {
@@ -139,7 +184,6 @@ fun Fragment.openUrlWithChromeTab(url: String) {
                 it.withToolbarColor(findColor(R.color.submit400))
             }
             .navigateTo(Uri.parse(url), activity)
-
 }
 
 fun Activity.openUrlWithIntent(url: String) {
@@ -187,7 +231,6 @@ fun Double.roundToDecimals(numDecimalPlaces: Int?): Double {
         this
     }
 }
-
 
 fun TextView.makeLinks(links: Array<String>, clickableSpans: Array<ClickableSpan>) {
     val spannableString = SpannableString(this.text)
@@ -297,7 +340,6 @@ fun ImageView.copyToClipboard(text: String, copyIcon: Int = R.drawable.ic_copy_1
             this.context.notNull { image.setImageDrawable(ContextCompat.getDrawable(it, copyIcon)) }
         }
     }
-
 }
 
 fun TextView.copyToClipboard(imageView: AppCompatImageView? = null, copyIcon: Int = R.drawable.ic_copy_18_black) {
@@ -312,8 +354,12 @@ fun TextView.copyToClipboard(imageView: AppCompatImageView? = null, copyIcon: In
     }
 }
 
-fun View.copyToClipboard(text: String, textView: AppCompatTextView,
-                         copyIcon: Int = R.drawable.ic_copy_18_black, copyColor: Int = R.color.black) {
+fun View.copyToClipboard(
+        text: String,
+        textView: AppCompatTextView,
+        copyIcon: Int = R.drawable.ic_copy_18_black,
+        copyColor: Int = R.color.black
+) {
     clipboardManager.primaryClip = ClipData.newPlainText(this.context.getString(R.string.app_name), text)
     showSnackbar(R.string.common_copied_to_clipboard, R.color.success500_0_94, Snackbar.LENGTH_SHORT)
 
@@ -336,13 +382,13 @@ fun View.copyToClipboard(text: String, textView: AppCompatTextView,
 /**
  * Extensions for simpler launching of Activities
  */
-
 inline fun <reified T : Any> Activity.launchActivity(
         requestCode: Int = -1,
         clear: Boolean = false,
         withoutAnimation: Boolean = false,
         options: Bundle? = null,
-        noinline init: Intent.() -> Unit = {}) {
+        noinline init: Intent.() -> Unit = {}
+) {
 
     var intent = newIntent<T>(this)
     if (options != null) intent.putExtras(options)
@@ -369,7 +415,8 @@ inline fun <reified T : Any> Fragment.launchActivity(
         clear: Boolean = false,
         withoutAnimation: Boolean = false,
         options: Bundle? = null,
-        noinline init: Intent.() -> Unit = {}) {
+        noinline init: Intent.() -> Unit = {}
+) {
 
     var intent = newIntent<T>(activity!!)
     if (options != null) intent.putExtras(options)
@@ -393,7 +440,8 @@ inline fun <reified T : Any> Fragment.launchActivity(
 inline fun <reified T : Any> Context.launchActivity(
         options: Bundle? = null,
         clear: Boolean = false,
-        noinline init: Intent.() -> Unit = {}) {
+        noinline init: Intent.() -> Unit = {}
+) {
 
     var intent = newIntent<T>(this)
     if (options != null) intent.putExtras(options)
@@ -401,7 +449,6 @@ inline fun <reified T : Any> Context.launchActivity(
     if (clear) {
         intent = newClearIntent<T>(this)
     }
-
 
     intent.init()
     startActivity(intent, options)
@@ -449,14 +496,37 @@ fun TextView.makeTextHalfBold() {
         ""
     }
     val str = SpannableStringBuilder(textBefore)
-    if (textBefore.indexOf(".") != -1) {
-        str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.indexOf("."), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-    } else if (textBefore.indexOf(" ") != -1) {
-        str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.indexOf(" "), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-    } else {
-        str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+    when {
+        textBefore.indexOf(".") != -1 ->
+            str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.indexOf("."),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        textBefore.indexOf(" ") != -1 ->
+            str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.indexOf(" "),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        else -> str.setSpan(StyleSpan(Typeface.BOLD), 0, textBefore.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     this.text = str.append(" $textAfter")
+}
+
+fun loadDbWavesBalance(): AssetBalance {
+    return find(Constants.WAVES_ASSET_ID_EMPTY)!!
+}
+
+fun find(assetId: String): AssetBalance? {
+    return (queryFirst<AssetBalanceDb> { equalTo("assetId", assetId) })?.convertFromDb()
+}
+
+fun findByGatewayId(gatewayId: String): AssetBalance? { // ticker
+    for (asset in EnvironmentManager.globalConfiguration.generalAssetIds) {
+        if (asset.gatewayId == gatewayId) {
+            return find(asset.assetId)
+        }
+    }
+    return null
+}
+
+fun getDeviceId(): String {
+    return "android:${Settings.Secure.getString(ctx.getContentResolver(), Settings.Secure.ANDROID_ID)}"
 }
 
 fun Throwable.errorBody(): ErrorResponse? {
@@ -467,6 +537,10 @@ fun Throwable.errorBody(): ErrorResponse? {
     }
 }
 
+fun ResponseBody.clone(): ResponseBody {
+    val bufferClone = this.source().buffer()?.clone()
+    return ResponseBody.create(this.contentType(), this.contentLength(), bufferClone)
+}
 
 fun Context.showAlertAboutScriptedAccount(buttonOnClickListener: () -> Unit = { }) {
     val alertDialogBuilder = AlertDialog.Builder(this, R.style.DialogBackgroundTheme).create()
@@ -492,10 +566,10 @@ fun Context.showAlertAboutScriptedAccount(buttonOnClickListener: () -> Unit = { 
 }
 
 fun isSpamConsidered(assetId: String?, prefsUtil: PrefsUtil): Boolean {
-    return (prefsUtil.getValue(PrefsUtil.KEY_ENABLE_SPAM_FILTER, true)
-            && (null != queryFirst<SpamAssetDb> {
-        equalTo("assetId", assetId)
-    }))
+    return (prefsUtil.getValue(PrefsUtil.KEY_ENABLE_SPAM_FILTER, true) &&
+            (null != queryFirst<SpamAssetDb> {
+                equalTo("assetId", assetId)
+            }))
 }
 
 fun AssetBalance.getItemType(): Int {

@@ -2,12 +2,13 @@ package com.wavesplatform.wallet.v2.ui.home.wallet.assets.sorting
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryAllAsSingle
+import com.vicpin.krealmextensions.save
 import com.vicpin.krealmextensions.saveAll
-import com.wavesplatform.wallet.v2.data.model.local.AssetSortingItem
-import com.wavesplatform.sdk.model.response.AssetBalance
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
+import com.wavesplatform.wallet.v2.data.model.local.AssetSortingItem
+import com.wavesplatform.wallet.v2.data.model.userdb.AssetBalanceStore
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import pyxis.uzuki.live.richutilskt.utils.runAsync
 import javax.inject.Inject
 
@@ -29,7 +30,7 @@ class AssetsSortingPresenter @Inject constructor() : BasePresenter<AssetsSorting
                                 .mapTo(mutableListOf()) {
                                     AssetSortingItem(AssetSortingItem.TYPE_FAVORITE, it.convertFromDb())
                                 }
-                        val notFavoriteList = it.filter({ !it.isFavorite && !it.isSpam })
+                        val notFavoriteList = it.filter { !it.isFavorite && !it.isSpam }
                                 .sortedBy { it.position }
                                 .mapTo(mutableListOf()) {
                                     AssetSortingItem(AssetSortingItem.TYPE_NOT_FAVORITE, it.convertFromDb())
@@ -50,12 +51,15 @@ class AssetsSortingPresenter @Inject constructor() : BasePresenter<AssetsSorting
 
     fun saveSortedPositions(data: MutableList<AssetSortingItem>) {
         val list = data
-                .mapTo(mutableListOf()) { it.asset }
-                .filter { !it.isWaves() }
-        list.forEachIndexed { index, assetBalance ->
-            assetBalance.position = index
-        }
+                .filter { it.type != AssetSortingItem.TYPE_LINE }
+                .mapIndexedTo(mutableListOf()) { position, item ->
+                    item.asset.position = position
+                    AssetBalanceStore(item.asset.assetId,
+                            item.asset.isHidden,
+                            item.asset.position,
+                            item.asset.isFavorite).save()
+                    return@mapIndexedTo item.asset
+                }
         AssetBalanceDb.convertToDb(list).saveAll()
     }
-
 }

@@ -1,10 +1,10 @@
 package com.wavesplatform.wallet.v2.ui.home.dex.trade.my_orders
 
 import com.arellomobile.mvp.InjectViewState
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.request.CancelOrderRequest
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.request.CancelOrderRequest
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import javax.inject.Inject
 
 @InjectViewState
@@ -16,11 +16,7 @@ class TradeMyOrdersPresenter @Inject constructor() : BasePresenter<TradeMyOrders
         addSubscription(matcherDataManager.loadMyOrders(watchMarket)
                 .compose(RxUtil.applyObservableDefaultSchedulers())
                 .subscribe({
-                    val sortedByTimestamp = it
-                            .sortedByDescending { it.timestamp }
-                            .toMutableList()
-
-                    viewState.afterSuccessLoadMyOrders(sortedByTimestamp)
+                    viewState.afterSuccessLoadMyOrders(it)
                 }, {
                     viewState.afterFailedLoadMyOrders()
                 }))

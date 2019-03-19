@@ -1,9 +1,8 @@
 package com.wavesplatform.wallet.v2.data.local
 
 import android.content.Context
-import android.media.MediaFormat.KEY_LANGUAGE
 import com.pddstudio.preferences.encrypted.EncryptedPreferences
-import com.wavesplatform.wallet.v2.data.model.local.Language
+import com.wavesplatform.sdk.net.model.Language
 import com.wavesplatform.wallet.v2.injection.qualifier.ApplicationContext
 import javax.inject.Inject
 
@@ -23,7 +22,6 @@ class PreferencesHelper @Inject constructor(@ApplicationContext context: Context
     var currentBlocksHeight: Int
         get() = mPref.getInt(KEY_CURRENT_BLOCKS_HEIGHT, 0)
         set(value) = mPref.edit().putInt(KEY_CURRENT_BLOCKS_HEIGHT, value).apply()
-
 
     fun setTutorialPassed(value: Boolean) {
         mPref.edit().putBoolean(KEY_TUTORIAL, value).apply()

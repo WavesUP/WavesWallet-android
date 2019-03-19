@@ -8,8 +8,8 @@ import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.Events
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.response.OrderResponse
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.response.OrderResponse
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.TradeActivity
 import com.wavesplatform.sdk.utils.notNull
@@ -19,7 +19,6 @@ import pers.victor.ext.gone
 import pers.victor.ext.inflate
 import pers.victor.ext.visiable
 import javax.inject.Inject
-
 
 class TradeMyOrdersFragment : BaseFragment(), TradeMyOrdersView {
 
@@ -34,7 +33,6 @@ class TradeMyOrdersFragment : BaseFragment(), TradeMyOrdersView {
     fun providePresenter(): TradeMyOrdersPresenter = presenter
 
     override fun configLayoutRes() = R.layout.fragment_trade_my_orders
-
 
     override fun onViewReady(savedInstanceState: Bundle?) {
         presenter.watchMarket = arguments?.getParcelable<WatchMarket>(TradeActivity.BUNDLE_MARKET)

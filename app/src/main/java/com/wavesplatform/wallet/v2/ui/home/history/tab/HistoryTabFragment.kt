@@ -11,7 +11,7 @@ import com.oushangfeng.pinnedsectionitemdecoration.PinnedHeaderItemDecoration
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.AssetBalance
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.custom.SpeedyLinearLayoutManager
 import com.wavesplatform.wallet.v2.ui.home.MainActivity
@@ -22,7 +22,6 @@ import kotlinx.android.synthetic.main.fragment_history_tab.*
 import pers.victor.ext.inflate
 import java.util.*
 import javax.inject.Inject
-
 
 class HistoryTabFragment : BaseFragment(), HistoryTabView {
 
@@ -52,7 +51,6 @@ class HistoryTabFragment : BaseFragment(), HistoryTabView {
                     }
                 })
 
-
         swipe_refresh.setColorSchemeResources(R.color.submit400)
         swipe_refresh.setOnRefreshListener { presenter.loadLastTransactions() }
         layoutManager = SpeedyLinearLayoutManager(baseActivity)
@@ -64,7 +62,6 @@ class HistoryTabFragment : BaseFragment(), HistoryTabView {
 
         adapter.bindToRecyclerView(recycle_history)
         adapter.emptyView = inflate(R.layout.layout_empty_data)
-
 
         skeletonScreen = Skeleton.bind(recycle_history)
                 .adapter(recycle_history.adapter)
@@ -157,7 +154,6 @@ class HistoryTabFragment : BaseFragment(), HistoryTabView {
         const val leasing_canceled = "Canceled"
 
         const val TYPE = "type"
-
 
         fun newInstance(type: String, asset: AssetBalance?): HistoryTabFragment {
             val historyDateItemFragment = HistoryTabFragment()

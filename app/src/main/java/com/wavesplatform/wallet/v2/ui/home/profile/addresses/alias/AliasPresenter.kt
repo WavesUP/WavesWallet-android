@@ -2,13 +2,12 @@ package com.wavesplatform.wallet.v2.ui.home.profile.addresses.alias
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryAllAsSingle
-import com.wavesplatform.wallet.App
-import com.wavesplatform.sdk.model.response.Alias
-import com.wavesplatform.sdk.model.response.GlobalTransactionCommission
-import com.wavesplatform.sdk.model.response.ScriptInfo
-import com.wavesplatform.sdk.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.Alias
+import com.wavesplatform.sdk.net.model.response.GlobalTransactionCommission
+import com.wavesplatform.sdk.net.model.response.ScriptInfo
+import com.wavesplatform.sdk.net.model.response.Transaction
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import com.wavesplatform.sdk.utils.TransactionUtil
 import com.wavesplatform.wallet.v2.data.model.db.AliasDb
 import io.reactivex.Observable
@@ -38,9 +37,8 @@ class AliasPresenter @Inject constructor() : BasePresenter<AliasView>() {
         callback.showCommissionLoading()
         fee = 0L
         addSubscription(Observable.zip(
-                matcherDataManager.getGlobalCommission(),
-                nodeDataManager.scriptAddressInfo(
-                        App.getAccessManager().getWallet()?.address ?: ""),
+                githubDataManager.getGlobalCommission(),
+                nodeDataManager.scriptAddressInfo(),
                 BiFunction { t1: GlobalTransactionCommission,
                              t2: ScriptInfo ->
                     return@BiFunction Pair(t1, t2)
@@ -60,7 +58,6 @@ class AliasPresenter @Inject constructor() : BasePresenter<AliasView>() {
                     callback.showCommissionError()
                 }))
     }
-
 
     interface OnCommissionGetListener {
         fun showCommissionLoading()

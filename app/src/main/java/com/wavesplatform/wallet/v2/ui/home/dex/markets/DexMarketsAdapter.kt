@@ -3,7 +3,7 @@ package com.wavesplatform.wallet.v2.ui.home.dex.markets
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.chad.library.adapter.base.BaseViewHolder
 import com.wavesplatform.wallet.R
-import com.wavesplatform.sdk.model.response.MarketResponse
+import com.wavesplatform.sdk.net.model.response.MarketResponse
 import javax.inject.Inject
 
 class DexMarketsAdapter @Inject constructor() : BaseQuickAdapter<MarketResponse, BaseViewHolder>(R.layout.dex_markets_item, null) {
@@ -16,7 +16,6 @@ class DexMarketsAdapter @Inject constructor() : BaseQuickAdapter<MarketResponse,
                 .setChecked(R.id.checkbox_choose, item.checked)
                 .addOnClickListener(R.id.image_info)
     }
-
 
     fun filter(text: String) {
         data.clear()
@@ -34,6 +33,4 @@ class DexMarketsAdapter @Inject constructor() : BaseQuickAdapter<MarketResponse,
         }
         notifyDataSetChanged()
     }
-
-
 }

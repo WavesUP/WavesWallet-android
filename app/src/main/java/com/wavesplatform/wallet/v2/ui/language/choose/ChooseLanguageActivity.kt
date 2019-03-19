@@ -7,7 +7,7 @@ import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.util.ViewUtils
-import com.wavesplatform.wallet.v2.data.model.local.LanguageItem
+import com.wavesplatform.sdk.net.model.LanguageItem
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.wallet.v2.ui.language.LanguageAdapter
 import com.wavesplatform.wallet.v2.ui.language.LanguagePresenter
@@ -21,13 +21,11 @@ import pers.victor.ext.dp2px
 import pers.victor.ext.visiable
 import javax.inject.Inject
 
-
 class ChooseLanguageActivity : BaseActivity(), LanguageView {
 
     @Inject
     @InjectPresenter
     lateinit var presenter: LanguagePresenter
-
 
     @Inject
     lateinit var adapter: LanguageAdapter
@@ -85,8 +83,8 @@ class ChooseLanguageActivity : BaseActivity(), LanguageView {
     private fun enterAnimation() {
         image_logo.post {
             image_logo.animate()
-                    .translationY(- image_logo.y
-                            + ViewUtils.convertDpToPixel(12f, this))
+                    .translationY(- image_logo.y +
+                            ViewUtils.convertDpToPixel(12f, this))
                     .setDuration(500)
                     .withEndAction {
                         recycle_language.animate()

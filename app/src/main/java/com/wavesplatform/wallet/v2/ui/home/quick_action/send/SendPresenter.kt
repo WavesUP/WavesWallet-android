@@ -2,23 +2,25 @@ package com.wavesplatform.wallet.v2.ui.home.quick_action.send
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryFirst
-import com.wavesplatform.wallet.App
-import com.wavesplatform.wallet.R
+import com.wavesplatform.sdk.utils.Constants
 import com.wavesplatform.sdk.crypto.Base58
 import com.wavesplatform.sdk.crypto.Hash
-import com.wavesplatform.wallet.v2.util.EnvironmentManager
+import com.wavesplatform.sdk.net.model.request.TransactionsBroadcastRequest
+import com.wavesplatform.sdk.net.model.request.TransferTransactionRequest
+import com.wavesplatform.sdk.net.model.response.*
+import com.wavesplatform.sdk.utils.EnvironmentManager
 import com.wavesplatform.sdk.utils.MoneyUtil
-import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.wallet.v2.data.manager.CoinomatManager
-import com.wavesplatform.sdk.model.request.TransactionsBroadcastRequest
-import com.wavesplatform.sdk.model.request.TransferTransactionRequest
-import com.wavesplatform.sdk.model.response.*
 import com.wavesplatform.sdk.utils.TransactionUtil.Companion.countCommission
 import com.wavesplatform.sdk.utils.isValidAddress
 import com.wavesplatform.sdk.utils.isWaves
+import com.wavesplatform.wallet.App
+import com.wavesplatform.wallet.R
+import com.wavesplatform.wallet.v2.data.manager.CoinomatManager
 import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
+import com.wavesplatform.wallet.v2.util.find
+import com.wavesplatform.wallet.v2.util.findByGatewayId
 import com.wavesplatform.wallet.v2.util.isSpamConsidered
 import io.reactivex.Observable
 import io.reactivex.functions.Function3
@@ -45,7 +47,7 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
     var gatewayMax: BigDecimal = BigDecimal.ZERO
     var fee = 0L
     var feeWaves = 0L
-    var feeAsset: AssetBalance = Constants.defaultAssets[0]
+    var feeAsset: AssetBalance = find(Constants.WAVES_ASSET_ID_EMPTY)!!
 
     fun sendClicked() {
         val res = validateTransfer()
@@ -80,13 +82,13 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
                 App.getAccessManager().getWallet()!!.publicKeyStr,
                 recipient ?: "",
                 MoneyUtil.getUnscaledValue(amount.toPlainString(), selectedAsset),
-                System.currentTimeMillis(),
+                EnvironmentManager.getTime(),
                 fee,
                 "",
                 feeAsset.assetId)
     }
 
-    fun validateTransfer(): Int {
+    private fun validateTransfer(): Int {
         if (selectedAsset == null) {
             return R.string.send_transaction_error_check_asset
         } else if (isRecipientValid() != true) {
@@ -96,8 +98,7 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
             if (TransactionsBroadcastRequest.getAttachmentSize(tx.attachment)
                     > TransferTransactionRequest.MaxAttachmentSize) {
                 return R.string.attachment_too_long
-            } else
-                if (tx.amount <= 0 || tx.amount > java.lang.Long.MAX_VALUE - tx.fee) {
+            } else if (tx.amount <= 0 || tx.amount > java.lang.Long.MAX_VALUE - tx.fee) {
                     return R.string.invalid_amount
                 } else if (tx.fee <= 0 || (feeAsset.isWaves() && tx.fee < Constants.WAVES_MIN_FEE)) {
                     return R.string.insufficient_fee
@@ -105,7 +106,7 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
                     return R.string.insufficient_funds
                 } else if (isGatewayAmountError()) {
                     return R.string.insufficient_gateway_funds_error
-                } else if (Constants.MONERO_ASSET_ID == recipientAssetId
+                } else if (findByGatewayId("XMR")!!.assetId == recipientAssetId
                         && moneroPaymentId != null
                         && (moneroPaymentId!!.length != MONERO_PAYMENT_ID_LENGTH
                                 || moneroPaymentId!!.contains(" ".toRegex()))) {
@@ -120,9 +121,9 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
             val totalAmount = amount + gatewayCommission
             val balance = BigDecimal.valueOf(selectedAsset!!.getAvailableBalance(),
                     selectedAsset!!.getDecimals())
-            return !(balance >= totalAmount
-                    && totalAmount >= gatewayMin
-                    && totalAmount <= gatewayMax)
+            return !(balance >= totalAmount &&
+                    totalAmount >= gatewayMin &&
+                    totalAmount <= gatewayMax)
         }
         return false
     }
@@ -137,7 +138,6 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
             } else {
                 true
             }
-
             tx.amount <= selectedAsset!!.balance!! && validFee
         }
     }
@@ -150,7 +150,7 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
     }
 
     fun loadXRate(assetId: String) {
-        val currencyTo = Constants.coinomatCryptoCurrencies[assetId]
+        val currencyTo = Constants.coinomatCryptoCurrencies()[assetId]
         if (currencyTo.isNullOrEmpty()) {
             type = SendPresenter.Type.UNKNOWN
             runOnUiThread {
@@ -211,8 +211,8 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
         viewState.showCommissionLoading()
         fee = 0L
         addSubscription(Observable.zip(
-                matcherDataManager.getGlobalCommission(),
-                nodeDataManager.scriptAddressInfo(App.getAccessManager().getWallet()?.address!!),
+                githubDataManager.getGlobalCommission(),
+                nodeDataManager.scriptAddressInfo(),
                 nodeDataManager.assetDetails(assetId),
                 Function3 { t1: GlobalTransactionCommission,
                             t2: ScriptInfo,
@@ -269,24 +269,17 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
         const val LANG: String = "ru_RU"
         const val MONERO_PAYMENT_ID_LENGTH = 64
 
-        fun getAssetId(recipient: String?): String? {
-            return when {
-                recipient!!.matches("^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$".toRegex()) ->
-                    Constants.BITCOIN_ASSET_ID
-                recipient.matches("^0x[0-9a-fA-F]{40}$".toRegex()) ->
-                    Constants.ETHEREUM_ASSET_ID
-                recipient.matches("^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$".toRegex()) ->
-                    Constants.LIGHTCOIN_ASSET_ID
-                recipient.matches("^t1[a-zA-Z0-9]{33}$".toRegex()) ->
-                    Constants.ZEC_ASSET_ID
-                recipient.matches("^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|[qp][a-zA-Z0-9]{41})$".toRegex()) ->
-                    Constants.BITCOINCASH_ASSET_ID
-                recipient.matches("^X[a-km-zA-HJ-NP-Z1-9]{25,34}$".toRegex()) ->
-                    Constants.DASH_ASSET_ID
-                recipient.matches("^4([0-9]|[A-B])(.){93}".toRegex()) ->
-                    Constants.MONERO_ASSET_ID
-                else -> null
+        fun getAssetId(recipient: String?, assetBalance: AssetBalance?): String? {
+            for (asset in EnvironmentManager.globalConfiguration.generalAssetIds) {
+                if (recipient!!.matches("${asset.addressRegEx}$".toRegex())) {
+                    return if (assetBalance != null) {
+                        asset.assetId
+                    } else {
+                        null
+                    }
+                }
             }
+            return null
         }
 
         fun isWavesAddress(address: String?): Boolean {
@@ -296,8 +289,8 @@ class SendPresenter @Inject constructor() : BasePresenter<SendView>() {
 
             val addressBytes = Base58.decode(address)
 
-            if (addressBytes[0] != 1.toByte()
-                    || addressBytes[1] != EnvironmentManager.getNetCode()) {
+            if (addressBytes[0] != 1.toByte() ||
+                    addressBytes[1] != EnvironmentManager.netCode) {
                 return false
             }
 

@@ -1,7 +1,5 @@
 package com.wavesplatform.wallet.v2.ui.home
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.support.design.widget.BottomSheetBehavior
 import android.support.design.widget.TabLayout
@@ -9,8 +7,7 @@ import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
 import android.support.v4.view.ViewCompat
 import android.support.v7.app.AlertDialog
-import android.text.TextPaint
-import android.text.style.ClickableSpan
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,9 +15,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
+import com.bumptech.glide.Glide
+import com.wavesplatform.sdk.net.model.response.News
+import com.wavesplatform.sdk.utils.EnvironmentManager
+import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v2.util.EnvironmentManager
 import com.wavesplatform.wallet.v2.util.PrefsUtil
 import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
@@ -35,23 +35,22 @@ import com.wavesplatform.wallet.v2.ui.home.quick_action.QuickActionBottomSheetFr
 import com.wavesplatform.wallet.v2.ui.home.wallet.WalletFragment
 import com.wavesplatform.wallet.v2.util.Analytics
 import com.wavesplatform.wallet.v2.util.launchActivity
-import com.wavesplatform.wallet.v2.util.makeLinks
-import com.wavesplatform.sdk.utils.notNull
 import kotlinx.android.synthetic.main.activity_main_v2.*
 import kotlinx.android.synthetic.main.backup_seed_warning_snackbar.*
-import kotlinx.android.synthetic.main.dialog_account_first_open.view.*
-import pers.victor.ext.*
+import kotlinx.android.synthetic.main.dialog_news.view.*
+import pers.victor.ext.click
+import pers.victor.ext.gone
+import pers.victor.ext.isNetworkConnected
+import pers.victor.ext.visiable
 import pyxis.uzuki.live.richutilskt.utils.put
 import pyxis.uzuki.live.richutilskt.utils.runDelayed
 import javax.inject.Inject
-
 
 class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedListener {
 
     @Inject
     @InjectPresenter
     lateinit var presenter: MainPresenter
-    private var accountFirstOpenDialog: AlertDialog? = null
     private val fragments = arrayListOf<Fragment>()
     private var activeFragment = Fragment()
     private var seedWarningBehavior: BottomSheetBehavior<LinearLayout>? = null
@@ -66,9 +65,9 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
         setNavigationBarColor(R.color.white)
         setupToolbar(toolbar_general)
 
-        showFirstOpenAlert(prefsUtil.getValue(PrefsUtil.KEY_ACCOUNT_FIRST_OPEN, true))
-
         setupBottomNavigation()
+
+        logFirstOpen()
 
 
         if (savedInstanceState == null) {
@@ -88,70 +87,22 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
                 })
     }
 
-    override fun onResume() {
-        super.onResume()
-        showBackUpSeedWarning()
-    }
-
-    private fun showFirstOpenAlert(firstOpen: Boolean) {
-        if (firstOpen) {
-            val alertDialogBuilder = AlertDialog.Builder(this)
-            accountFirstOpenDialog = alertDialogBuilder
-                    .setCancelable(false)
-                    .setView(getFirstOpenAlertView())
-                    .create()
-
-            accountFirstOpenDialog?.show()
-        }
-    }
-
-    private fun getFirstOpenAlertView(): View? {
-        val view = LayoutInflater.from(this)
-                .inflate(R.layout.dialog_account_first_open, null)
-
-        view.checkbox_funds_on_device.setOnCheckedChangeListener { _, isChecked ->
-            presenter.checkedAboutBackup = isChecked
-            view.button_confirm.isEnabled = presenter.isAllCheckedToStart()
-        }
-
-        view.checkbox_backup.setOnCheckedChangeListener { _, isChecked ->
-            presenter.checkedAboutFundsOnDevice = isChecked
-            view.button_confirm.isEnabled = presenter.isAllCheckedToStart()
-        }
-
-        view.checkbox_terms_of_use.setOnCheckedChangeListener { _, isChecked ->
-            presenter.checkedAboutTerms = isChecked
-            view.button_confirm.isEnabled = presenter.isAllCheckedToStart()
-        }
-
-        val siteClick = object : ClickableSpan() {
-            override fun onClick(p0: View?) {
-                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.URL_TERMS))
-                startActivity(browserIntent)
-            }
-
-            override fun updateDrawState(ds: TextPaint) {
-                super.updateDrawState(ds)
-                ds.color = findColor(R.color.black)
-            }
-        }
-
-        view.checkbox_terms_of_use.makeLinks(
-                arrayOf(getString(R.string.dialog_account_first_open_about_terms_key)),
-                arrayOf(siteClick))
-
-        view.button_confirm.click {
-            prefsUtil.setValue(PrefsUtil.KEY_ACCOUNT_FIRST_OPEN, false)
-            accountFirstOpenDialog?.cancel()
-            showBackUpSeedWarning()
+    private fun logFirstOpen() {
+        if (prefsUtil.getValue(PrefsUtil.KEY_ACCOUNT_FIRST_OPEN, true)) {
             val values = Bundle()
             values.put("wallets_count", prefsUtil.getGlobalValueList(
-                    EnvironmentManager.get().current().getName()
+                    EnvironmentManager.name
                             + PrefsUtil.LIST_WALLET_GUIDS).size.toString())
             Analytics.sendEvent(firebaseAnalytics, "new_wallet", values)
         }
+    }
 
-        return view
+    override fun onResume() {
+        super.onResume()
+        showBackUpSeedWarning()
+        if (App.getAccessManager().isAuthenticated()) {
+            presenter.loadNews()
+        }
     }
 
     fun enableElevation(enable: Boolean) {
@@ -161,7 +112,6 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
             ViewCompat.setElevation(appbar_layout, 8F)
         }
     }
-
 
     /**
      * Setup bottom navigation with custom tabs
@@ -213,7 +163,6 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
         historyFragment.setOnElevationChangeListener(elevationListener)
         profileFragment.setOnElevationChangeListener(elevationListener)
 
-
         fragments.add(walletFragment)
         fragments.add(dexFragment)
         fragments.add(QuickActionBottomSheetFragment.newInstance())
@@ -235,7 +184,6 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
     }
 
     override fun onTabUnselected(tab: TabLayout.Tab?) {
-
     }
 
     override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -347,11 +295,11 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
     }
 
     private fun showBackUpSeedWarning() {
-        if (!prefsUtil.getValue(PrefsUtil.KEY_ACCOUNT_FIRST_OPEN, true)
-                && App.getAccessManager().isCurrentAccountBackupSkipped()) {
+        if (!prefsUtil.getValue(PrefsUtil.KEY_ACCOUNT_FIRST_OPEN, true) &&
+                App.getAccessManager().isCurrentAccountBackupSkipped()) {
             val currentGuid = App.getAccessManager().getLastLoggedInGuid()
             val lastTime = preferencesHelper.getShowSaveSeedWarningTime(currentGuid)
-            val now = System.currentTimeMillis()
+            val now = EnvironmentManager.getTime()
             if (now > lastTime + MIN_15) {
                 implementSwipeToDismiss()
 
@@ -405,6 +353,46 @@ class MainActivity : BaseDrawerActivity(), MainView, TabLayout.OnTabSelectedList
             slidingRootNav.closeMenu(true)
         } else {
             exit()
+        }
+    }
+
+    override fun showNews(news: News) {
+        val ids = prefsUtil.getGlobalValueList(PrefsUtil.SHOWED_NEWS_IDS).toHashSet()
+        var anyNewsShowed = false
+        for (notification in news.notifications) {
+            if (!ids.contains(notification.id) && !anyNewsShowed) {
+
+                val startDate = notification.startDate ?: Long.MAX_VALUE
+                val endDate = notification.endDate ?: Long.MAX_VALUE
+
+                if ((EnvironmentManager.getTime() / 1000) in startDate..endDate) {
+                    var accountFirstOpenDialog: AlertDialog? = null
+                    val view = LayoutInflater.from(this)
+                            .inflate(R.layout.dialog_news, null)
+
+                    Glide.with(this)
+                            .load(notification.logoUrl)
+                            .into(view.image)
+
+                    val langCode = preferencesHelper.getLanguage()
+                    view.text_title.text = News.getTitle(langCode, notification)
+                    view.text_subtitle.text = News.getSubtitle(langCode, notification)
+                    view.button_ok.click {
+                        prefsUtil.addGlobalListValue(PrefsUtil.SHOWED_NEWS_IDS, notification.id)
+                        accountFirstOpenDialog?.dismiss()
+                    }
+
+                    accountFirstOpenDialog = AlertDialog.Builder(this)
+                            .setCancelable(false)
+                            .setView(view)
+                            .create()
+
+                    accountFirstOpenDialog.window?.setGravity(Gravity.BOTTOM)
+                    accountFirstOpenDialog.show()
+
+                    anyNewsShowed = true
+                }
+            }
         }
     }
 

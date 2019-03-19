@@ -1,6 +1,5 @@
 package com.wavesplatform.wallet.v2.ui.home.wallet.assets.details.content
 
-
 import android.os.Bundle
 import android.view.View
 import com.arellomobile.mvp.presenter.InjectPresenter
@@ -14,7 +13,7 @@ import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
 import com.wavesplatform.wallet.v2.data.model.local.HistoryTab
-import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.AssetBalance
 import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.sdk.utils.stripZeros
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
@@ -34,7 +33,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-
 
 class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
 
@@ -59,7 +57,7 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
         view_pager_transaction_history.adapter = historyAdapter
         view_pager_transaction_history.offscreenPageLimit = 3
         view_pager_transaction_history.clipToPadding = false
-        view_pager_transaction_history.setPadding(dp2px(14), 0, dp2px(14), 0);
+        view_pager_transaction_history.setPadding(dp2px(14), 0, dp2px(14), 0)
         view_pager_transaction_history.pageMargin = dp2px(7)
 
         eventSubscriptions.add(RxView.clicks(image_copy_issuer)
@@ -75,7 +73,6 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
                 .subscribe {
                     image_copy_id.copyToClipboard(text_view_id_value.text.toString())
                 })
-
 
         receive.click {
             launchActivity<ReceiveActivity> {
@@ -99,7 +96,7 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
                     .load(R.layout.item_skeleton_wallet)
                     .show()
 
-            presenter.loadLastTransactionsFor(it.assetId, (activity as AssetDetailsActivity).getAllTransactions())
+            presenter.loadLastTransactionsFor(it, (activity as AssetDetailsActivity).getAllTransactions())
         }
 
         eventSubscriptions.add(rxEventBus.filteredObservable(Events.NeedUpdateHistoryScreen::class.java)
@@ -108,12 +105,10 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
                 })
     }
 
-
     override fun onAssetAddressBalanceLoadSuccess(assetBalance: AssetBalance) {
         presenter.assetBalance = assetBalance
         fillInformation(assetBalance)
     }
-
 
     override fun showLastTransactions(data: MutableList<HistoryItem>) {
         skeletonScreen?.hide()
@@ -199,7 +194,6 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
             text_view_total_amount_value.text = MoneyUtil.getScaledText(it, assetBalance).stripZeros()
         }
 
-
         when {
             assetBalance?.isWaves() == true -> {
                 relative_issuer.gone()
@@ -227,7 +221,6 @@ class AssetDetailsContentFragment : BaseFragment(), AssetDetailsContentView {
         }
         cardBurnContainer.visiable()
     }
-
 
     override fun onNetworkConnectionChanged(networkConnected: Boolean) {
         super.onNetworkConnectionChanged(networkConnected)

@@ -1,23 +1,21 @@
 package com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.order
 
 import com.arellomobile.mvp.InjectViewState
-import com.wavesplatform.sdk.model.OrderType
+import com.wavesplatform.sdk.net.model.OrderType
+import com.wavesplatform.sdk.net.model.request.OrderRequest
+import com.wavesplatform.sdk.net.model.response.*
+import com.wavesplatform.sdk.utils.EnvironmentManager
 import com.wavesplatform.sdk.utils.TransactionUtil
-import com.wavesplatform.wallet.v2.data.model.local.BuySellData
-import com.wavesplatform.wallet.v2.data.model.local.OrderExpiration
-import com.wavesplatform.sdk.model.request.OrderRequest
-import com.wavesplatform.sdk.model.response.*
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.OrderBook
 import com.wavesplatform.sdk.utils.clearBalance
 import com.wavesplatform.sdk.utils.isWaves
+import com.wavesplatform.wallet.v2.data.model.local.BuySellData
+import com.wavesplatform.wallet.v2.data.model.local.OrderExpiration
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import com.wavesplatform.wallet.v2.ui.home.dex.trade.buy_and_sell.TradeBuyAndSellBottomSheetFragment
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import com.wavesplatform.wallet.v2.util.errorBody
 import io.reactivex.Observable
 import io.reactivex.functions.Function3
-import pers.victor.ext.currentTimeMillis
 import java.math.RoundingMode
 import javax.inject.Inject
 
@@ -65,13 +63,39 @@ class TradeOrderPresenter @Inject constructor() : BasePresenter<TradeOrderView>(
                 })
     }
 
-    fun getBalanceFromAssetPair() {
+    fun loadPairBalancesAndCommission() {
+        viewState.showCommissionLoading()
+        fee = 0L
         addSubscription(matcherDataManager.getBalanceFromAssetPair(data?.watchMarket)
-                .compose(RxUtil.applyObservableDefaultSchedulers())
-                .subscribe({
+                .flatMap {
+                    // save balance
                     currentAmountBalance = it[data?.watchMarket?.market?.amountAsset]
                     currentPriceBalance = it[data?.watchMarket?.market?.priceAsset]
-                    viewState.successLoadPairBalance(it)
+
+                    return@flatMap Observable.zip(
+                            githubDataManager.getGlobalCommission(),
+                            nodeDataManager.assetDetails(data?.watchMarket?.market?.priceAsset),
+                            nodeDataManager.assetDetails(data?.watchMarket?.market?.amountAsset),
+                            Function3 { t1: GlobalTransactionCommission,
+                                        t2: AssetsDetails,
+                                        t3: AssetsDetails ->
+                                return@Function3 Triple(t1, t2, t3)
+                            })
+                }
+                .compose(RxUtil.applyObservableDefaultSchedulers())
+                .subscribe({
+                    val commission = it.first
+                    val priceAssetsDetails = it.second
+                    val amountAssetsDetails = it.third
+                    val params = GlobalTransactionCommission.Params()
+                    params.transactionType = Transaction.EXCHANGE
+                    params.smartPriceAsset = priceAssetsDetails.scripted
+                    params.smartAmountAsset = amountAssetsDetails.scripted
+                    fee = TransactionUtil.countCommission(commission, params)
+                    orderRequest.matcherFee = fee
+
+                    viewState.showCommissionSuccess(fee)
+                    viewState.successLoadPairBalance(currentAmountBalance, currentPriceBalance)
                 }, {
                     it.printStackTrace()
                 }))
@@ -88,7 +112,7 @@ class TradeOrderPresenter @Inject constructor() : BasePresenter<TradeOrderView>(
 
         orderRequest.orderType = if (orderType == 0) OrderType.BUY else OrderType.SELL
         orderRequest.assetPair = createPair()
-        orderRequest.timestamp = currentTimeMillis
+        orderRequest.timestamp = EnvironmentManager.getTime()
         orderRequest.expiration = orderRequest.timestamp + expirationList[selectedExpiration].timeServer
 
         addSubscription(matcherDataManager.placeOrder(orderRequest)
@@ -114,36 +138,5 @@ class TradeOrderPresenter @Inject constructor() : BasePresenter<TradeOrderView>(
                 else data?.watchMarket?.market?.priceAsset ?: ""
 
         return OrderBook.Pair(amountAsset, priceAsset)
-    }
-
-    fun loadCommission(assetIdPrice: String?, assetIdAmount: String?) {
-        viewState.showCommissionLoading()
-        fee = 0L
-        addSubscription(Observable.zip(
-                matcherDataManager.getGlobalCommission(),
-                nodeDataManager.assetDetails(assetIdPrice),
-                nodeDataManager.assetDetails(assetIdAmount),
-                Function3 { t1: GlobalTransactionCommission,
-                            t2: AssetsDetails,
-                            t3: AssetsDetails ->
-                    return@Function3 Triple(t1, t2, t3)
-                })
-                .compose(RxUtil.applyObservableDefaultSchedulers())
-                .subscribe({ triple ->
-                    val commission = triple.first
-                    val priceAssetsDetails = triple.second
-                    val amountAssetsDetails = triple.third
-                    val params = GlobalTransactionCommission.Params()
-                    params.transactionType = Transaction.EXCHANGE
-                    params.smartPriceAsset = priceAssetsDetails.scripted
-                    params.smartAmountAsset = amountAssetsDetails.scripted
-                    fee = TransactionUtil.countCommission(commission, params)
-                    orderRequest.matcherFee = fee
-                    viewState.showCommissionSuccess(fee)
-                }, {
-                    it.printStackTrace()
-                    fee = 0L
-                    viewState.showCommissionError()
-                }))
     }
 }

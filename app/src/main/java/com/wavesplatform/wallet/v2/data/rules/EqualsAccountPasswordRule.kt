@@ -1,7 +1,7 @@
 package com.wavesplatform.wallet.v2.data.rules
 
 import android.support.annotation.StringRes
-import com.wavesplatform.sdk.WavesWallet
+import com.wavesplatform.sdk.crypto.WavesWallet
 import com.wavesplatform.wallet.App
 import io.github.anderscheow.validator.rules.BaseRule
 
@@ -38,7 +38,6 @@ class EqualsAccountPasswordRule : BaseRule {
                             value.trim())
                     true
                 }
-
             } catch (e: Exception) {
                 false
             }

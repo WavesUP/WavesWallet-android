@@ -1,14 +1,13 @@
 package com.wavesplatform.wallet.v2.ui.auth.import_account.manually
 
 import android.os.Bundle
-import android.text.InputType
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
-import com.wavesplatform.sdk.WavesWallet
+import com.wavesplatform.sdk.crypto.WavesWallet
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.rules.NotEmptyTrimRule
@@ -17,7 +16,9 @@ import com.wavesplatform.wallet.v2.ui.auth.import_account.protect_account.Protec
 import com.wavesplatform.wallet.v2.ui.auth.new_account.NewAccountActivity
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.sdk.utils.Identicon
+import com.wavesplatform.wallet.v2.util.applyFilterStartEmptySpace
 import com.wavesplatform.wallet.v2.util.launchActivity
+import com.wavesplatform.wallet.v2.util.onAction
 import com.wavesplatform.sdk.utils.notNull
 import io.github.anderscheow.validator.Validation
 import io.github.anderscheow.validator.Validator
@@ -29,7 +30,6 @@ import pers.victor.ext.click
 import pers.victor.ext.isNetworkConnected
 import javax.inject.Inject
 
-
 class EnterSeedManuallyFragment : BaseFragment(), EnterSeedManuallyView {
 
     @Inject
@@ -37,12 +37,10 @@ class EnterSeedManuallyFragment : BaseFragment(), EnterSeedManuallyView {
     lateinit var presenter: EnterSeedManuallyPresenter
     lateinit var validator: Validator
 
-
     @ProvidePresenter
     fun providePresenter(): EnterSeedManuallyPresenter = presenter
 
     override fun configLayoutRes() = R.layout.fragment_enter_seed_manually
-
 
     override fun onViewReady(savedInstanceState: Bundle?) {
         setSkeleton()
@@ -53,6 +51,8 @@ class EnterSeedManuallyFragment : BaseFragment(), EnterSeedManuallyView {
                 .and(SeedRule(getString(R.string.enter_seed_manually_validation_seed_exists_error)))
 
         val identicon = Identicon()
+
+        edit_seed.applyFilterStartEmptySpace()
 
         edit_seed.addTextChangedListener {
             on { s, start, before, count ->
@@ -94,15 +94,12 @@ class EnterSeedManuallyFragment : BaseFragment(), EnterSeedManuallyView {
             }
         }
 
-        edit_seed.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE && button_continue.isEnabled) {
+        edit_seed.onAction(EditorInfo.IME_ACTION_DONE) {
+            if (button_continue.isEnabled) {
                 launchActivity<ProtectAccountActivity> {
                     putExtra(NewAccountActivity.KEY_INTENT_SEED, edit_seed.text.toString().trim())
                     putExtra(NewAccountActivity.KEY_INTENT_PROCESS_ACCOUNT_IMPORT, true)
                 }
-                true
-            } else {
-                false
             }
         }
 

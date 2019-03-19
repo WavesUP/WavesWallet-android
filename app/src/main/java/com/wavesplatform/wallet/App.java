@@ -15,13 +15,12 @@ import com.google.firebase.FirebaseApp;
 import com.novoda.simplechromecustomtabs.SimpleChromeCustomTabs;
 import com.squareup.leakcanary.LeakCanary;
 import com.wavesplatform.sdk.Wavesplatform;
+import com.wavesplatform.wallet.v2.util.PrefsUtil;
 import com.wavesplatform.wallet.v2.data.helpers.AuthHelper;
 import com.wavesplatform.wallet.v2.data.manager.AccessManager;
 import com.wavesplatform.wallet.v2.data.receiver.ScreenReceiver;
 import com.wavesplatform.wallet.v2.injection.component.DaggerApplicationV2Component;
 import com.wavesplatform.wallet.v2.util.Analytics;
-import com.wavesplatform.wallet.v2.util.EnvironmentManager;
-import com.wavesplatform.wallet.v2.util.PrefsUtil;
 import com.wavesplatform.wallet.v2.util.connectivity.ConnectivityManager;
 
 import javax.inject.Inject;
@@ -31,6 +30,8 @@ import dagger.android.DaggerApplication;
 import io.fabric.sdk.android.Fabric;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.realm.Realm;
+import io.sentry.Sentry;
+import io.sentry.android.AndroidSentryClientFactory;
 import pers.victor.ext.Ext;
 import timber.log.Timber;
 
@@ -40,7 +41,7 @@ public class App extends DaggerApplication {
     PrefsUtil mPrefsUtil;
     @Inject
     AuthHelper authHelper;
-    private static Context sContext;
+    private static App application;
     private static AccessManager accessManager;
     private LocalizationApplicationDelegate localizationDelegate
             = new LocalizationApplicationDelegate(this);
@@ -56,18 +57,18 @@ public class App extends DaggerApplication {
         Analytics.appsFlyerInit(this);
         FirebaseApp.initializeApp(this);
         Fabric.with(this, new Crashlytics());
-        sContext = this;
+        application = this;
         BlockCanary.install(this, new AppBlockCanaryContext()).start();
 
         Realm.init(this);
         Ext.INSTANCE.setCtx(this);
 
+        Sentry.init(new AndroidSentryClientFactory(this.getApplicationContext()));
+
         RxJavaPlugins.setErrorHandler(Timber::e);
 
-        EnvironmentManager.init(this);
         accessManager = new AccessManager(mPrefsUtil, authHelper);
-
-        Wavesplatform.init(this, null);
+        Wavesplatform.init(this, true, null);
 
         if (BuildConfig.DEBUG) {
             Timber.plant(new Timber.DebugTree());
@@ -88,7 +89,7 @@ public class App extends DaggerApplication {
     }
 
     public static Context getAppContext() {
-        return sContext;
+        return application;
     }
 
     public static AccessManager getAccessManager() {

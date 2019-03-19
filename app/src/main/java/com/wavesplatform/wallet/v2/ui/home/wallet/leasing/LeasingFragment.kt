@@ -14,8 +14,8 @@ import com.ethanhua.skeleton.ViewSkeletonScreen
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.data.Events
 import com.wavesplatform.wallet.v2.data.model.local.HistoryTab
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.net.model.response.Transaction
 import com.wavesplatform.wallet.v2.ui.base.view.BaseFragment
 import com.wavesplatform.wallet.v2.ui.home.MainActivity
 import com.wavesplatform.wallet.v2.ui.home.history.HistoryActivity
@@ -191,7 +191,6 @@ class LeasingFragment : BaseFragment(), LeasingView {
         } else {
             progress_of_leasing.progress = 0
         }
-
 
         button_start_lease.click {
             launchActivity<StartLeasingActivity> {

@@ -5,8 +5,8 @@ import com.chad.library.adapter.base.BaseViewHolder
 import com.google.gson.internal.bind.util.ISO8601Utils
 import com.wavesplatform.wallet.R
 import com.wavesplatform.sdk.utils.MoneyUtil
-import com.wavesplatform.sdk.model.response.LastTradesResponse
-import com.wavesplatform.sdk.model.response.MarketResponse
+import com.wavesplatform.sdk.net.model.response.LastTradesResponse
+import com.wavesplatform.sdk.net.model.response.MarketResponse
 import com.wavesplatform.sdk.utils.clearBalance
 import pyxis.uzuki.live.richutilskt.utils.asDateString
 import java.math.BigDecimal
@@ -21,8 +21,8 @@ class TradeLastTradesAdapter @Inject constructor() : BaseQuickAdapter<LastTrades
 
         helper
                 .setText(R.id.text_time_value, ISO8601Utils.parse(item.timestamp, ParsePosition(0)).asDateString("HH:mm:ss"))
-                .setText(R.id.text_price_value, item.price?.toBigDecimal()?.toPlainString())
-                .setText(R.id.text_amount_value, item.amount.toString())
+                .setText(R.id.text_price_value, item.price?.toBigDecimal().toPlainString())
+                .setText(R.id.text_amount_value, item.amount.toBigDecimal().toPlainString())
                 .setText(R.id.text_sum_value, BigDecimal(MoneyUtil.getFormattedTotal(sum, market.priceAssetDecimals).clearBalance()).toPlainString())
                 .setTextColor(R.id.text_price_value, item.getMyOrder().getType().color)
     }

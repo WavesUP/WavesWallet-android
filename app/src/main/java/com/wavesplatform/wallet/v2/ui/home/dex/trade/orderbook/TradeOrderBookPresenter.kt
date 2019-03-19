@@ -4,16 +4,16 @@ import com.arellomobile.mvp.InjectViewState
 import com.chad.library.adapter.base.entity.MultiItemEntity
 import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.v2.data.model.local.LastPriceItem
-import com.wavesplatform.sdk.model.WatchMarket
-import com.wavesplatform.sdk.model.response.LastTradesResponse
-import com.wavesplatform.sdk.model.response.OrderBook
+import com.wavesplatform.sdk.net.model.WatchMarket
+import com.wavesplatform.sdk.net.model.response.LastTradesResponse
+import com.wavesplatform.sdk.net.model.response.OrderBook
 import com.wavesplatform.sdk.utils.clearBalance
 import com.wavesplatform.sdk.utils.notNull
 import com.wavesplatform.sdk.utils.stripZeros
 import com.wavesplatform.wallet.v2.data.model.local.OrderBookAskMultiItemEntity
 import com.wavesplatform.wallet.v2.data.model.local.OrderBookBidMultiItemEntity
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
-import com.wavesplatform.wallet.v2.util.RxUtil
+import com.wavesplatform.sdk.utils.RxUtil
 import io.reactivex.Observable
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
@@ -69,7 +69,6 @@ class TradeOrderBookPresenter @Inject constructor() : BasePresenter<TradeOrderBo
                             it.printStackTrace()
                             viewState.afterFailedOrderbook()
                         }))
-
     }
 
     private fun getCalculatedBids(list: List<OrderBook.Bid>): List<MultiItemEntity> {
@@ -114,5 +113,4 @@ class TradeOrderBookPresenter @Inject constructor() : BasePresenter<TradeOrderBo
     fun clearSubscriptions() {
         subscriptions.clear()
     }
-
 }

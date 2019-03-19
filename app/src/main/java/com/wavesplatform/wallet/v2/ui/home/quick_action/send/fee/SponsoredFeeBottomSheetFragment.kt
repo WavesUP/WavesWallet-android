@@ -9,16 +9,15 @@ import android.view.ViewGroup
 import com.arellomobile.mvp.presenter.InjectPresenter
 import com.arellomobile.mvp.presenter.ProvidePresenter
 import com.chad.library.adapter.base.BaseQuickAdapter
-import com.wavesplatform.sdk.model.response.AssetBalance
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.net.model.response.AssetBalance
 import com.wavesplatform.sdk.utils.MoneyUtil
 import com.wavesplatform.wallet.R
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.local.SponsoredAssetItem
 import com.wavesplatform.wallet.v2.ui.base.view.BaseSuperBottomSheetDialogFragment
 import kotlinx.android.synthetic.main.fragment_sponsored_fee_bottom_sheet_dialog.view.*
 import pyxis.uzuki.live.richutilskt.utils.runDelayed
 import javax.inject.Inject
-
 
 class SponsoredFeeBottomSheetFragment : BaseSuperBottomSheetDialogFragment(), SponsoredFeeDetailsView {
     private var rootView: View? = null
@@ -37,7 +36,6 @@ class SponsoredFeeBottomSheetFragment : BaseSuperBottomSheetDialogFragment(), Sp
 
     @ProvidePresenter
     fun providePresenter(): SponsoredFeeDetailsPresenter = presenter
-
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreateView(inflater, container, savedInstanceState)

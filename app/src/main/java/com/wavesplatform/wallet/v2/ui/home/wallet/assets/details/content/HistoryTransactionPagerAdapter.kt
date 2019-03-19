@@ -5,21 +5,25 @@ import android.support.v4.app.FragmentManager
 import android.support.v4.view.PagerAdapter
 import android.view.View
 import android.view.ViewGroup
+import com.wavesplatform.sdk.utils.Constants
+import com.wavesplatform.sdk.net.model.response.Transaction
+import com.wavesplatform.sdk.net.model.response.TransactionType
+import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
 import com.wavesplatform.wallet.v2.util.PrefsUtil
-import com.wavesplatform.wallet.v2.data.Constants
 import com.wavesplatform.wallet.v2.data.model.local.HistoryItem
-import com.wavesplatform.sdk.model.response.Transaction
-import com.wavesplatform.sdk.model.response.TransactionType
-import com.wavesplatform.sdk.utils.*
 import com.wavesplatform.wallet.v2.ui.home.history.details.HistoryDetailsBottomSheetFragment
-import com.wavesplatform.wallet.v2.util.*
+import com.wavesplatform.wallet.v2.util.icon
+import com.wavesplatform.wallet.v2.util.isSpamConsidered
+import com.wavesplatform.wallet.v2.util.makeTextHalfBold
 import kotlinx.android.synthetic.main.assets_detailed_history_item.view.*
 import pers.victor.ext.*
 
 class HistoryTransactionPagerAdapter constructor(
-        var fragmentManager: FragmentManager?, var prefsUtil: PrefsUtil) : PagerAdapter() {
+    var fragmentManager: FragmentManager?,
+    var prefsUtil: PrefsUtil
+) : PagerAdapter() {
 
     var items: List<HistoryItem> = arrayListOf()
 
@@ -58,6 +62,13 @@ class HistoryTransactionPagerAdapter constructor(
                                 "+${getScaledAmount(it, decimals)}"
                     }
                 }
+                TransactionType.RECEIVE_SPONSORSHIP_TYPE -> {
+                    item.data.fee.notNull {
+                        layout.text_transaction_value.text =
+                                "+${getScaledAmount(it, item.data.feeAssetObject?.precision
+                                        ?: 8)} ${item.data.feeAssetObject?.name}"
+                    }
+                }
                 TransactionType.MASS_SPAM_RECEIVE_TYPE,
                 TransactionType.MASS_RECEIVE_TYPE,
                 TransactionType.MASS_SEND_TYPE -> {
@@ -90,14 +101,16 @@ class HistoryTransactionPagerAdapter constructor(
                 TransactionType.DATA_TYPE,
                 TransactionType.SET_ADDRESS_SCRIPT_TYPE,
                 TransactionType.CANCEL_ADDRESS_SCRIPT_TYPE,
-                TransactionType.SET_SPONSORSHIP_TYPE,
-                TransactionType.CANCEL_SPONSORSHIP_TYPE,
                 TransactionType.UPDATE_ASSET_SCRIPT_TYPE -> {
                     layout.text_transaction_value.setTypeface(null, Typeface.BOLD)
                     layout.text_transaction_value.text = layout.text_transaction_name.context
                             .getString(it.title)
                     layout.text_transaction_name.text = layout.text_transaction_name.context
                             .getString(R.string.history_data_type_title)
+                }
+                TransactionType.SET_SPONSORSHIP_TYPE,
+                TransactionType.CANCEL_SPONSORSHIP_TYPE -> {
+                    layout.text_transaction_value.text = item.data.asset?.name
                 }
                 else -> {
                     item.data.amount.notNull {
@@ -125,7 +138,6 @@ class HistoryTransactionPagerAdapter constructor(
             }
         }
         layout.text_transaction_value.makeTextHalfBold()
-
 
         collection.addView(layout)
         return layout
@@ -178,7 +190,7 @@ class HistoryTransactionPagerAdapter constructor(
                 secondOrder.assetPair?.priceAssetObject?.name)
 
         val amountAssetTicker = if (amountAsset.name == "WAVES") {
-            "WAVES"
+            Constants.WAVES_ASSET_ID_FILLED
         } else {
             amountAsset.ticker
         }

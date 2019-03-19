@@ -2,14 +2,12 @@ package com.wavesplatform.wallet.v2.ui.home.wallet.leasing
 
 import com.arellomobile.mvp.InjectViewState
 import com.vicpin.krealmextensions.queryAsSingle
+import com.wavesplatform.sdk.utils.Constants
 import com.wavesplatform.sdk.Wavesplatform
-import com.wavesplatform.wallet.v2.util.RxUtil
-import com.wavesplatform.wallet.v2.data.Constants
-import com.wavesplatform.wallet.v2.data.model.local.LeasingStatus
-import com.wavesplatform.sdk.model.response.AssetBalance
-import com.wavesplatform.sdk.model.response.Transaction
-import com.wavesplatform.wallet.v2.data.model.db.AssetBalanceDb
+import com.wavesplatform.sdk.net.model.response.AssetBalance
+import com.wavesplatform.sdk.utils.RxUtil
 import com.wavesplatform.wallet.v2.data.model.db.TransactionDb
+import com.wavesplatform.wallet.v2.data.model.local.LeasingStatus
 import com.wavesplatform.wallet.v2.ui.base.presenter.BasePresenter
 import io.reactivex.Observable
 import io.reactivex.functions.BiFunction
@@ -37,7 +35,7 @@ class LeasingPresenter @Inject constructor() : BasePresenter<LeasingView>() {
                         .subscribe({
                             viewState.showBalances(it.first)
                             viewState.showActiveLeasingTransaction(TransactionDb.convertFromDb(it.second))
-                        },{
+                        }, {
                             it.printStackTrace()
                             viewState.afterFailedLoadLeasing()
                         }))

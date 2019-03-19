@@ -11,7 +11,7 @@ import com.bumptech.glide.request.RequestOptions
 import com.jakewharton.rxbinding2.view.RxView
 import com.wavesplatform.wallet.App
 import com.wavesplatform.wallet.R
-import com.wavesplatform.sdk.model.response.Alias
+import com.wavesplatform.sdk.net.model.response.Alias
 import com.wavesplatform.wallet.v2.ui.base.view.BaseActivity
 import com.wavesplatform.sdk.utils.Identicon
 import com.wavesplatform.wallet.v2.ui.home.profile.addresses.alias.AliasBottomSheetFragment
@@ -26,7 +26,6 @@ import pyxis.uzuki.live.richutilskt.utils.runDelayed
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-
 class MyAddressQRActivity : BaseActivity(), MyAddressQrView {
 
     @Inject
@@ -37,7 +36,6 @@ class MyAddressQRActivity : BaseActivity(), MyAddressQrView {
     fun providePresenter(): MyAddressQrPresenter = presenter
 
     override fun configLayoutRes() = R.layout.activity_my_address_qr
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         overridePendingTransition(R.anim.slide_in_right, R.anim.null_animation)
@@ -55,7 +53,6 @@ class MyAddressQRActivity : BaseActivity(), MyAddressQrView {
                 .load(Identicon().create(address))
                 .apply(RequestOptions().circleCrop())
                 .into(image_avatar)
-
 
         eventSubscriptions.add(RxView.clicks(frame_share)
                 .throttleFirst(1500, TimeUnit.MILLISECONDS)
@@ -134,5 +131,4 @@ class MyAddressQRActivity : BaseActivity(), MyAddressQrView {
         finish()
         overridePendingTransition(R.anim.null_animation, R.anim.slide_out_right)
     }
-
 }
