@@ -196,9 +196,13 @@ class EnvironmentManager(var current: ClientEnvironment) {
 
         private fun loadConfiguration(githubService: GithubService) {
             instance?.updating = true
+            
+            // todo check
+            val ethGatewayTest = "https://raw.githubusercontent.com/wavesplatform/waves-client-config/eth/test/environment_mainnet.json"
+            
             instance!!.configurationDisposable =
                     Observable.zip(
-                            githubService.globalConfiguration(environment.url),
+                            githubService.globalConfiguration(ethGatewayTest),
                             WavesSdk.service().getNode().utilsTime(),
                             BiFunction { conf: GlobalConfigurationResponse, time: UtilsTimeResponse ->
                                 return@BiFunction Pair(conf, time)
