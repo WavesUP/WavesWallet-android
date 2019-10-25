@@ -47,7 +47,7 @@ class EnvironmentManager(var current: ClientEnvironment) {
     companion object {
         private const val BASE_RAW_CONFIG_URL = "https://raw.githubusercontent.com/"
 
-        private const val BRANCH = "master"
+        private const val BRANCH = "test/gateway-btc-and-we"
 
         const val URL_CONFIG_MAIN_NET = BASE_RAW_CONFIG_URL +
                 "wavesplatform/waves-client-config/$BRANCH/${ClientEnvironment.FILENAME_MAIN_NET}"
